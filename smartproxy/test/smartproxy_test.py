@@ -19,7 +19,10 @@ import process
 class Response:
 	def __init__(self, code, body, headers):
 		self.code = code
-		self.body = cjson.decode(body)
+		try:
+			self.body = cjson.decode(body)
+		except cjson.DecodeError:
+			self.body = body
 		self.headers = headers
 
 def req(url, method, body=None, headers=None):
@@ -469,6 +472,54 @@ class ProxyTest(TestCase):
 		be2_post = cjson.decode(be2_request.input_body)
 		self.assertEqual(len(be2_post['docs']), 2)
 		self.assertEqual(sorted([row['_id'] for row in be2_post['docs']]), ['a', 'c'])
+
+	def testReduce(self):
+		"""Try to re-reduce"""
+		be1 = CouchStub()
+		be1.expect_GET("/funstuff0/_design/fun").reply(200, dict(
+			views=dict(
+				stuff=dict(
+					map="function(doc){}",
+					reduce="function(k,v,r) { return sum(v); }"
+				)
+			)))
+		be1.expect_GET("/funstuff0/_design/fun/_view/stuff").reply(200, dict(
+			total_rows=3,
+			offset=0,
+			rows=[
+				{"id":"a", "key":"a", "value": 1},
+				{"id":"c", "key":"b", "value": 2},
+				{"id":"c", "key":"c", "value": 3}
+			]))
+		be1.listen("localhost", 23456)
+
+		be2 = CouchStub()
+		be2.expect_GET("/funstuff1/_design/fun/_view/stuff").reply(200, dict(
+			total_rows=3,
+			offset=0,
+			rows=[
+				{"id":"x", "key":"b", "value": 10},
+				{"id":"y", "key":"c", "value": 11},
+				{"id":"z", "key":"e", "value": 12},
+			]))
+		be2.listen("localhost", 34567)
+
+		resp = get("http://localhost:22008/funstuff/_design/fun/_view/stuff")
+
+		be1.verify()
+		be2.verify()
+
+		self.assertEqual(resp.body["total_rows"], 6)
+		self.assertEqual(resp.body["offset"], 0)
+		self.assertEqual(len(resp.body["rows"]), 4)
+		self.assertEqual(resp.body["rows"][0]["key"], "a")
+		self.assertEqual(resp.body["rows"][1]["key"], "b")
+		self.assertEqual(resp.body["rows"][2]["key"], "c")
+		self.assertEqual(resp.body["rows"][3]["key"], "e")
+		self.assertEqual(resp.body["rows"][0]["value"], 1)
+		self.assertEqual(resp.body["rows"][1]["value"], 12)
+		self.assertEqual(resp.body["rows"][2]["value"], 14)
+		self.assertEqual(resp.body["rows"][3]["value"], 12)
 
 if __name__=="__main__":
 	if os.environ.get("DEBUG",False):

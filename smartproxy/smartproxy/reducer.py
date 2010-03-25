@@ -104,6 +104,20 @@ def json_cmp(a, b):
 
 	return cmp(a,b)
 
+def json_min(lst):
+	rv = lst[0]
+	for x in lst[1:]:
+		if json_cmp(rv, x)>0:
+			rv = x
+	return rv
+
+def json_max(lst):
+	rv = lst[0]
+	for x in lst[1:]:
+		if json_cmp(rv, x)<0:
+			rv = x
+	return rv
+
 def to_reducelist(stuff):
 	return [row["value"] for row in stuff.get("rows",[])]
 
@@ -282,7 +296,11 @@ class Reducer:
 		self.descending = 'true' in args.get('descending', ['false'])
 		self.etags = {}
 
+		self._results = []
+		self._response = {"total_rows": 0, "offset": 0}
+
 	def process_map(self, data, shard=None, headers={}, code=None):
+		log.msg("process_map %s" % data)
 		if code is not None:
 			self.coderecvd = code
 		if shard is not None:
@@ -293,17 +311,59 @@ class Reducer:
 		self.headersrecvd.update(headers)
 
 		#TODO: check to make sure this doesn't go less than 0
-		self.num_entries_remaining = self.num_entries_remaining - 1
+		self.num_entries_remaining -= 1
+		log.msg("num_entries_remaining %d" % self.num_entries_remaining)
 		try:
 			results = cjson.decode(data)
 		except:
 			log.err('Could not json decode: %s' % data)
 			results = {'total_rows': 0, 'offset': 0, 'rows': []}
 		#result => {'rows' : [ {key: key1, value:value1}, {key:key2, value:value2}]}
-		self.queue_data(results)
+		self._results.append(results)
+		for k in self._response:
+			self._response[k] += results.get(k, 0)
 
-	def process_reduce(self, args):
-		self.reduces_out -= 1
+		if self.num_entries_remaining==0:
+			self._reduce_all(self._results)
+
+	def _reduce_all(self, streams):
+		log.msg("reducer._reduce_all %s" % str(streams))
+		min_fn = json_min
+		if self.descending:
+			min_fn = json_max
+
+		result = []
+		streams = [q for q in streams if q['rows']]
+		while streams:
+			log.msg("top streams are '%s'" % streams)
+			bucket = []
+			cur = min_fn([q['rows'][0]['key'] for q in streams])
+			log.msg("cur is %s" % cur)
+			for q in streams:
+				while q['rows'] and q['rows'][0]['key']==cur:
+					bucket.append(q['rows'].pop(0))
+			result.append((cur, bucket))
+
+			# get rid of empty streams
+			streams = [q for q in streams if q['rows']]
+
+		if self.reduce_func:
+			keys = [k for k, _ in result]
+			def format_line(rows):
+				# ["rereduce",["function(k, v, r) { return sum(v); }"],[33,55,66]]
+				return cjson.encode(("rereduce", [self.reduce_func], [row["value"] for row in rows]))
+			lines = [format_line(rows) for k, rows in result]
+			log.msg("sending to reducer: ***%s***" % lines)
+			self.reduce_queue.enqueue(keys, lines, self._reduce_all_done)
+		else:
+			log.msg("no reduce function")
+			# just merge, no reduce
+			all_rows = []
+			for (key, rows) in result:
+				all_rows += rows
+			self._send_result(all_rows)
+	
+	def _reduce_all_done(self, args):
 		keys, data = args
 		entries = data.split("\n")
 		log.debug("in process reduce: %s %s" % (keys, entries))
@@ -313,32 +373,27 @@ class Reducer:
 		r = []
 		for k, v in zip(keys, [val[0] for s,val in results]):
 			r.append( dict(key=k, value=v) )
-		self.queue_data(dict(rows=r))
-
-	def queue_data(self, data):
-		self.queue.append(data)
-		self.__reduce()
+		self._send_result(r)
 	
-	def _do_reduce(self, a, b):
-		"""Actually combine two documents into one.
-
-		Override this to get different reduce behaviour.
-		"""
-		inp = merge(a, b, descending=self.descending) #merge two sorted lists together
-
-		if self.reduce_func:
-			args = [ (key, ["rereduce", [self.reduce_func], to_reducelist(chunk)]) for key,chunk in split_by_key(inp["rows"])]
-			lines = [cjson.encode(chunk) for key, chunk in args]
-			keys = [key for key,chunk in args]
-			#TODO: maybe this could be lines,keys = zip(*(key, cjson.encode(chunk) for key, chunk in args))
-			self.reduces_out += 1
-			self.reduce_queue.enqueue(keys, lines, self.process_reduce)
-		else:
-			# no reduce function; just merge
-			self.queue_data(inp)
+	def _send_result(self, rows):
+		# if this was a count query, slice stuff off
+		if self.count is not None:
+			log.debug("count: %d, skip: %d, results: %d" % (self.count, self.skip, len(self.queue[0]['rows'])))
+			rows = rows[self.skip:self.skip+self.count]
+		elif self.skip > 0:
+			rows = rows[self.skip:]
+		# filter headers that should not be reverse proxied
+		strip_headers = ['content-length', 'etag']
+		headers = dict([(k,v) for k,v in self.headersrecvd.iteritems() if k.lower() not in strip_headers])
+		
+		log.debug("Reducer: response headers = %s" % str(headers))
+		self._response["rows"] = rows
+		body = cjson.encode(self._response)
+		self.reduce_deferred.callback((self.coderecvd, headers, body))
 
 	def __reduce(self):
 		"""Pull stuff off the queue."""
+		log.msg("calling __reduce, didn't we get rid of it?")
 		#only need to reduce if there is more than one item in the queue
 		if len(self.queue) == 1:
 			#if we've received all the results from all the shards
@@ -355,7 +410,7 @@ class Reducer:
 				strip_headers = ['content-length', 'etag']
 				headers = dict([(k,v) for k,v in self.headersrecvd.iteritems() if k.lower() not in strip_headers])
 				
-					# calculate a deterministic etag
+				# calculate a deterministic etag
 				nodes = self.etags.keys()
 				nodes.sort() # sum in deterministic order
 				md5etag = md5.md5()
