@@ -1,5 +1,9 @@
+<<<<<<< HEAD:couchdb/couchdb-0.10.1-attbackoff.patch
 diff --git a/src/couchdb/couch_rep_att.erl b/src/couchdb/couch_rep_att.erl
 index 5cd63f8..0b609c8 100644
+=======
+diff --git apache-couchdb-0.10.1/src/couchdb/couch_rep_att.erl apache-couchdb-0.10.1/src/couchdb/couch_rep_att.erl
+>>>>>>> whitespace changes to att backoff patch. i think:couchdb/couchdb-0.10.1-attbackoff.patch
 --- apache-couchdb-0.10.1/src/couchdb/couch_rep_att.erl
 +++ apache-couchdb-0.10.1/src/couchdb/couch_rep_att.erl
 @@ -54,17 +54,19 @@ attachment_receiver(Ref, Request) ->
@@ -11,9 +15,16 @@ index 5cd63f8..0b609c8 100644
          case {Request#http_db.retries, Request#http_db.pause} of
          {0, _} ->
 -             ?LOG_INFO("request for ~p failed", [Request#http_db.resource]),
+<<<<<<< HEAD:couchdb/couchdb-0.10.1-attbackoff.patch
 +             ?LOG_INFO("request for ~p failed with reason ~p",
 +                 [Request#http_db.resource, Err]),
               throw({attachment_request_failed, max_retries_reached});
+=======
+-             throw({attachment_request_failed, max_retries_reached});
++            ?LOG_INFO("request for ~p failed with reason ~p",
++                [Request#http_db.resource, Err]),
++            throw({attachment_request_failed, max_retries_reached});
+>>>>>>> whitespace changes to att backoff patch. i think:couchdb/couchdb-0.10.1-attbackoff.patch
          {N, Pause} when N > 0 ->
 -            ?LOG_INFO("request for ~p timed out, retrying in ~p seconds",
 -                [Request#http_db.resource, Pause/1000]),
@@ -33,8 +44,12 @@ index 5cd63f8..0b609c8 100644
          throw({attachment_request_failed, premature_end})
 -    after 31000 ->
 -        throw({attachment_request_failed, timeout})
+<<<<<<< HEAD:couchdb/couchdb-0.10.1-attbackoff.patch
 -    end.
 +     end.
+=======
+     end.
+>>>>>>> whitespace changes to att backoff patch. i think:couchdb/couchdb-0.10.1-attbackoff.patch
  
  start_http_request(Req) ->
      %% set stream_to here because self() has changed
