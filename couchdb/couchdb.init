@@ -35,7 +35,9 @@ start() {
     [ -x $exec ] || exit 5
     [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
-    daemon --user couchdb "$exec -b"
+		# TODO these should come from sysconfig
+		ulimit -n 45000
+    daemon --user couchdb "$exec -b -r 5"
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile

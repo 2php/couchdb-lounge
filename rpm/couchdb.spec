@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.1
-Release:        6%{?dist}.lounge1
+Release:        7%{?dist}.lounge1
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -151,6 +151,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Fri Mar 26 2010 Kevin Ferguson <kevin.a.ferguson@gmail.com> 0.10.1-7
+- Init script tweaks
+
 * Wed Mar 10 2010 Kevin Ferguson <kevin.a.ferguson@gmail.com> 0.10.1-5
 - Backport replication checkpointing fix
 

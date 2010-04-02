@@ -50,7 +50,7 @@ def use_config(cfg, testing=False):
 		db_prefix = ''
 
 # default to production config
-use_config('local')
+use_config('prod')
 
 class LoungeError(Exception):
 	def __init__(self, code, key=''):
@@ -228,8 +228,8 @@ class Resource(object):
 	def get(self, args=None):
 		return self._request('GET', self.url(), args=args)
 	
-	def put(self):
-		result = self._request('PUT', self.url(), body=self._rec)
+	def put(self, args=None):
+		result = self._request('PUT', self.url(), body=self._rec, args=args)
 		return result
 	
 	def delete(self, args=None):
@@ -284,9 +284,12 @@ class Resource(object):
 		except NotFound:
 			return cls.new(*key)
 	
-	def save(self):
+	def save(self, batchok=False):
 		"""Create or update an existing record."""
-		result = self.put()
+		args = None
+		if batchok:
+			args = {"batch": "ok"}
+		result = self.put(args)
 		if result.get("ok",False):
 			if "id" in result:
 				self._rec["_id"] = result["id"]
