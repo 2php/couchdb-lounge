@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.1
-Release:        9%{?dist}.lounge6
+Release:        10%{?dist}.lounge1
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -18,6 +18,7 @@ Patch2:         %{name}-%{version}-597fix.patch
 Patch3:         %{name}-%{version}-mochiweb-max.patch
 Patch4:         %{name}-%{version}-checkpoints.patch
 Patch5:         %{name}-%{version}-attbackoff.patch
+Patch6:         %{name}-%{version}-replicator-settings.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -55,6 +56,7 @@ JavaScript acting as the default view definition language.
 %patch3 -p1 -b .mochiweb-max
 %patch4 -p1 -b .checkpoints
 %patch5 -p1 -b .attbackoff
+%patch6 -p1 -b .replicator-settings
 # Patch pid location
 #sed -i 's/%localstatedir%\/run\/couchdb.pid/%localstatedir%\/run\/couchdb\/couchdb.pid/g' \
 #bin/couchdb.tpl.in
