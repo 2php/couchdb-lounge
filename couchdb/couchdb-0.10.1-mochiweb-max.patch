@@ -1,24 +1,34 @@
-diff --git a/src/couchdb/couch_httpd.erl b/src/couchdb/couch_httpd.erl
+diff --git apache-couchdb-0.10.1/etc/couchdb/default.ini.tpl.in apache-couchdb-0.10.1/etc/couchdb/default.ini.tpl.in
+index ce95872..c02071a 100644
+--- apache-couchdb-0.10.1/etc/couchdb/default.ini.tpl.in
++++ apache-couchdb-0.10.1/etc/couchdb/default.ini.tpl.in
+@@ -17,6 +17,7 @@ batch_save_interval = 1000 ; milliseconds after which to save batches
+ [httpd]
+ port = 5984
+ bind_address = 127.0.0.1
++max_connections = 2048
+ authentication_handlers = {couch_httpd_oauth, oauth_authentication_handler}, {couch_httpd_auth, default_authentication_handler}
+ default_handler = {couch_httpd_db, handle_request}
+ WWW-Authenticate = Basic realm="administrator"
+\ No newline at end of file
+diff --git apache-couchdb-0.10.1/src/couchdb/couch_httpd.erl apache-couchdb-0.10.1/src/couchdb/couch_httpd.erl
+index 0d76c01..a9ea841 100644
 --- apache-couchdb-0.10.1/src/couchdb/couch_httpd.erl
 +++ apache-couchdb-0.10.1/src/couchdb/couch_httpd.erl
 @@ -33,6 +33,7 @@ start_link() ->
  
      BindAddress = couch_config:get("httpd", "bind_address", any),
      Port = couch_config:get("httpd", "port", "5984"),
-+    MaxConnections = couch_config:get("httpd", "max_connections", 2048),
++    MaxConnections = couch_config:get("httpd", "max_connections", "2048"),
  
      DefaultSpec = "{couch_httpd_db, handle_request}",
      DefaultFun = make_arity_1_fun(
-@@ -69,7 +70,8 @@ start_link() ->
-         {loop, Loop},
-         {name, ?MODULE},
-         {ip, BindAddress},
--        {port, Port}
-+        {port, Port},
-+        {max, MaxConnections}
-     ]) of
-     {ok, MochiPid} -> {ok, MochiPid};
-     {error, Reason} ->
--- 
-1.6.3.3
-
+@@ -84,6 +84,8 @@ start_link() ->
+             ?MODULE:stop();
+         ("httpd", "port") ->
+             ?MODULE:stop();
++        ("httpd", "max_connections") ->
++            ?MODULE:stop();
+         ("httpd", "default_handler") ->
+             ?MODULE:stop();
+         ("httpd_global_handlers", _) ->
