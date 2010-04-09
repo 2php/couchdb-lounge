@@ -417,6 +417,8 @@ class SmartproxyResource(resource.Resource):
 					# stop the remaining channels
 					shard_proxy.stopProducing()
 					cleanup_changes(reason)
+				else:
+					shard_proxy.finish()
 			finally:
 				json_output.finish()
 				request.unregisterProducer()

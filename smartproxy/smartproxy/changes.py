@@ -85,8 +85,6 @@ class ChangesProxy(streaming.MultiPCP):
 			self.seq[channel] = data['seq']
 			data['seq'] = self.seq
 			self.consumer.write(data)
-		elif 'last_seq' in data:
-			self.finish()
 		else:
 			# don't write here!
 			# data could be an error message
