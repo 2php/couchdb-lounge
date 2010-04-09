@@ -35,6 +35,7 @@ start() {
     [ -x $exec ] || exit 5
     [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
+    [ -z $COUCHDB_ULIMIT_OPTIONS ] || ulimit $COUCHDB_ULIMIT_OPTIONS
     daemon --user couchdb "$exec -b -r $COUCHDB_RESPAWN_TIMEOUT -o $COUCHDB_STDOUT_FILE -e $COUCHDB_STDERR_FILE $COUCHDB_OPTIONS"
     retval=$?
     echo
