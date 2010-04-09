@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.1
-Release:        10%{?dist}.lounge1
+Release:        12%{?dist}.lounge1
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -19,6 +19,7 @@ Patch3:         %{name}-%{version}-mochiweb-max.patch
 Patch4:         %{name}-%{version}-checkpoints.patch
 Patch5:         %{name}-%{version}-attbackoff.patch
 Patch6:         %{name}-%{version}-replicator-settings.patch
+Patch7:         %{name}-%{version}-replicator-keepalive.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -57,6 +58,7 @@ JavaScript acting as the default view definition language.
 %patch4 -p1 -b .checkpoints
 %patch5 -p1 -b .attbackoff
 %patch6 -p1 -b .replicator-settings
+%patch7 -p1 -b .replicator-keepalive
 # Patch pid location
 #sed -i 's/%localstatedir%\/run\/couchdb.pid/%localstatedir%\/run\/couchdb\/couchdb.pid/g' \
 #bin/couchdb.tpl.in
@@ -153,6 +155,12 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Fri Apr 09 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.1-12
+- Patch to fix HTTP Keep-Alive problem with replication
+
+* Fri Apr 09 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.1-11
+- Init script supports standard couchdb sysconfig options + ulimit
+
 * Fri Mar 26 2010 Kevin Ferguson <kevin.a.ferguson@gmail.com> 0.10.1-7
 - Init script tweaks
 
