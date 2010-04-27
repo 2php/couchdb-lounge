@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.1
-Release:        13%{?dist}.lounge1
+Release:        13%{?dist}.lounge2
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -155,6 +155,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Tue Apr 27 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.1-13-2
+- bump checkpoint history limit back up to 50
+
 * Fri Apr 09 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.1-13
 - quote ulimit check in init script
 
