@@ -398,11 +398,11 @@ class Document(Resource):
 		uuids = Resource.find(url).uuids
 		return uuids[0]
 
-	def save(self):
+	def save(self, **kwargs):
 		 is_valid = self.validate()
 		 if not is_valid:
 			 raise ValidationFailed("Validation failed for object of type %s: %s.  Errors: %s" % (self.__class__, str(self._rec), str(self._errors)))
-		 super(Document, self).save()
+		 super(Document, self).save(**kwargs)
 
 	def url(self):
 		# It should be OK to create a Document instance with no db-- the only
@@ -592,7 +592,7 @@ class View(Resource):
 	def get_results(self, args):
 		return self._request('GET', self.url(), args=args)
 	
-	def save(self):
+	def save(self, **kwargs):
 		raise NotImplementedError
 
 class TempView(View):
@@ -634,6 +634,9 @@ class Attachment(Resource):
 			"stream": StringIO.StringIO(data)
 		}
 
-	def put(self):
-		result = self._request('PUT', self.url(), args={"rev": self._rec["_rev"]}, body=self._rec)
+	def put(self, args=None):
+		if args is None:
+			args = {}
+		args["rev"] = self._rec["_rev"]
+		result = self._request('PUT', self.url(), args=args, body=self._rec)
 		return result
