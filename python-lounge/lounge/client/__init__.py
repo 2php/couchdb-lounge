@@ -177,6 +177,9 @@ class Resource(object):
 			url += '?' + urllib.urlencode(args)
 		curl.setopt(pycurl.URL, str(url))
 
+		# disable signals for timeouts for thread safety
+		curl.setopt(pycurl.NOSIGNAL, 1)
+
 		# capture the result in a buffer
 		outbuf = StringIO.StringIO()
 		curl.setopt(pycurl.WRITEFUNCTION, outbuf.write)
