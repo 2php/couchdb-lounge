@@ -43,6 +43,8 @@ import changes
 import streaming
 import reducer
 
+from lrucache import LRUCache
+
 def normalize_header(h):
 	return '-'.join([word.capitalize() for word in h.split('-')])
 
@@ -144,16 +146,8 @@ class SmartproxyResource(resource.Resource):
 		self.__loadConfig()
 		self.__loadConfigCallback = task.LoopingCall(self.__loadConfig)
 		self.__loadConfigCallback.start(300)
-		self._loadCache()
 
 		self.in_progress = {}
-
-	def _loadCache(self):
-		"""
-		Load the cache with any data we've persisted.  If we can't unpickle the
-		cache file for any reason, this will create an empty cache.
-		"""
-		self.cache = {}
 
 	def __loadConfig(self):
 		conf_file = self.prefs.get_pref("/proxy_conf")
@@ -169,6 +163,16 @@ class SmartproxyResource(resource.Resource):
 			self.cacheable = [(re.compile(pat), t) for pat, t in cacheables]
 		except KeyError:
 			self.cacheable = []
+
+		try:
+			cache_size = int(self.prefs.get_pref('/cache_entries'))
+		except KeyError:
+			cache_size = 16
+
+		if hasattr(self, 'cache'):
+			self.cache.size = cache_size
+		else:
+			self.cache = LRUCache(cache_size)
 
 	def render_temp_view(self, request):
 		"""Farm out a view query to all nodes and combine the results."""
