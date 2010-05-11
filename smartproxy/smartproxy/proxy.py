@@ -680,7 +680,6 @@ class SmartproxyResource(resource.Resource):
 
 		# fold function to reduce the sharded results
 		def fold_results_fun(acc, result):
-			print result
 			result, shard_idx = result             #packed by DeferredList
 			result, node_idx, factory = result     #packed by getPageFromAny
 			result = cjson.decode(result)
@@ -696,7 +695,6 @@ class SmartproxyResource(resource.Resource):
 		def finish_request(results):
 			# results looks like (True, result) since we get here only if all succeeed
 			# reduce over these results with fold_results_fun to produce output
-			print results
 			output = reduce(fold_results_fun,
 					itertools.izip(itertools.imap(lambda x: x[1], results), # pull out result
 						       itertools.count()),
