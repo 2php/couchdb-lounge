@@ -146,7 +146,7 @@ class ProxyTest(TestCase):
 		self.assertEqual(resp.body['doc_count'], 15)
 		self.assertEqual(resp.body['doc_del_count'], 3)
 		self.assertEqual(resp.body['disk_size'], 32768)
-		self.assertEqual(resp.body['update_seq'], '[8, 16]')
+		self.assertEqual(resp.body['update_seq'], encode_seq([8,16]))
 
 	def testGetMissingDB(self):
 		"""Try to GET information on a missing database."""
