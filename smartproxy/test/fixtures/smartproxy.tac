@@ -11,7 +11,7 @@ from twisted.python import log
 from lounge.prefs import Prefs
 from smartproxy.proxy import SmartproxyResource
 
-prefs = Prefs("fixtures/smartproxy.xml")
+prefs = Prefs("fixtures/smartproxy.xml", no_missing_keys=True)
 
 http_port = 22008
 
