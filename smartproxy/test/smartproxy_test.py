@@ -7,6 +7,8 @@ import cjson
 import StringIO
 import urllib
 import urllib2
+import base64
+import zlib
 
 from unittest import TestCase, main
 
@@ -69,6 +71,24 @@ def assert_raises(exception, function, *args, **kwargs):
 		assert False, "Should have raised %s" % exception
 	except exception:
 		pass
+
+def encode_seq(seq):
+	def fold_list_seq_to_test_shard_seq(x, y):
+		i, x = x
+		y = y
+		x.update({str(i):{str(i):y}})
+		return (i+1, x)
+
+	if isinstance(seq, list):
+		l, seq = reduce(fold_list_seq_to_test_shard_seq, seq, (0, {}))
+
+	return base64.urlsafe_b64encode(
+	    zlib.compress(cjson.encode(seq), 1))
+
+def decode_seq(seq):
+	return cjson.decode(
+	    zlib.decompress(
+		base64.urlsafe_b64decode(seq)))
 
 class ProxyTest(TestCase):
 	def setUp(self):
