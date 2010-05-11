@@ -13,7 +13,6 @@
 #limitations under the License.
 
 import atexit
-import base64
 import cjson
 import cPickle
 import copy
@@ -25,7 +24,6 @@ import re
 import sys
 import time
 import urllib
-import zlib
 
 from zope.interface import implements
 
@@ -706,8 +704,8 @@ class SmartproxyResource(resource.Resource):
 					 'compact_running': [],
 					 'disk_size': 0})
 			# encode the sequence information
-			output['update_seq'] = base64.urlsafe_b64encode(zlib.compress(cjson.encode(output['update_seq']), 1))
-			output['purge_seq'] = base64.urlsafe_b64encode(zlib.compress(cjson.encode(output['purge_seq']), 1))
+			output['update_seq'] = changes.encode_seq(output['update_seq'])
+			output['purge_seq'] = changes.encode_seq(output['purge_seq'])
 			request.write(cjson.encode(output) + '\n')
 			request.finish()
 
