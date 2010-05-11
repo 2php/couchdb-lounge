@@ -15,6 +15,7 @@
 import base64
 import cjson
 import zlib
+import copy
 
 from collections import deque
 
@@ -75,7 +76,7 @@ def transformations(continuous=False):
 class ChangesProxy(streaming.MultiPCP):
 	def __init__(self, consumer, since):
 		streaming.MultiPCP.__init__(self, consumer)
-		self.seq = since
+		self.seq = copy.deepcopy(since)
 
 	def write(self, channelData):
 		channel, data = channelData
@@ -83,7 +84,7 @@ class ChangesProxy(streaming.MultiPCP):
 			return	
 		elif 'seq' in data:
 			self.seq[channel] = data['seq']
-			data['seq'] = self.seq
+			data['seq'] = copy.deepcopy(self.seq)
 			self.consumer.write(data)
 		else:
 			# don't write here!
