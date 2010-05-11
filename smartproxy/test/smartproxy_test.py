@@ -9,6 +9,7 @@ import urllib
 import urllib2
 import base64
 import zlib
+import textwrap
 
 from unittest import TestCase, main
 
@@ -196,22 +197,31 @@ class ProxyTest(TestCase):
 		smartproxy should send a _changes req to each shard and merge them.
 		"""
 		be1 = CouchStub()
-		be1.expect_GET("/funstuff0/_changes?since=5").reply(200, dict(
-			results=[
-				{"seq": 6, "id": "mywallet", "changes":[{"rev": "1-2345"}]},
-				{"seq": 7, "id": "elsegundo", "changes":[{"rev": "2-3456"}]}
-			],last_seq=7),headers={"Content-Type": "text/plain;charset=utf8"})
+		be1.expect_GET("/funstuff0/_changes?since=5").reply(200,
+			textwrap.dedent(
+			'''\
+			{"results":[
+			{"seq": 6, "id": "mywallet", "changes":[{"rev": "1-2345"}]},
+			{"seq": 7, "id": "elsegundo", "changes":[{"rev": "2-3456"}]}
+			],
+			"last_seq"=7}'''),
+			headers={"Content-Type": "text/plain;charset=utf8"},
+			raw_body=True)
 		be1.listen("localhost", 23456)
 
 		be2 = CouchStub()
-		be2.expect_GET("/funstuff1/_changes?since=12").reply(200, dict(
-			results=[
-				{"seq": 13, "id": "gottagetit", "changes":[{"rev": "1-2345"}]},
-				{"seq": 14, "id": "gotgottogetit", "changes":[{"rev": "2-3456"}]}
-			],last_seq=14),headers={"Content-Type": "text/plain;charset=utf8"})
+		be2.expect_GET("/funstuff1/_changes?since=12").reply(200,
+			textwrap.dedent('''\
+			{"results":[
+			{"seq": 13, "id": "gottagetit", "changes":[{"rev": "1-2345"}]},
+			{"seq": 14, "id": "gotgottogetit", "changes":[{"rev": "2-3456"}]}
+			],
+			"last_seq"=14}'''),
+			headers={"Content-Type": "text/plain;charset=utf8"},
+			raw_body=True)
 		be2.listen("localhost", 34567)
 
-		resp = get("http://localhost:22008/funstuff/_changes?since=%s" % urllib.quote(cjson.encode([5,12])))
+		resp = get("http://localhost:22008/funstuff/_changes?since=%s" % encode_seq([5,12]))
 
 		be1.verify()
 		be2.verify()
@@ -225,8 +235,6 @@ class ProxyTest(TestCase):
 		# check that the sequence vectors increment correctly
 		# the order the rows arrive is non-deterministic
 		seq = [5,12]
-		def encode(lst):
-			return cjson.encode(seq)
 		for row in res:
 			if row["id"] in ["mywallet", "elsegundo"]:
 				seq[0] += 1
@@ -234,8 +242,8 @@ class ProxyTest(TestCase):
 				seq[1] += 1
 			else:
 				assert False, "Got unexpected row %s" % row["id"]
-			self.assertEqual(encode(seq), row["seq"])
-		self.assertEqual(encode([7,14]), resp.body['last_seq'])
+			self.assertEqual(encode_seq(seq), row["seq"])
+		self.assertEqual(encode_seq([7,14]), resp.body['last_seq'])
 
 	def testTempView(self):
 		"""Make a temp view."""
