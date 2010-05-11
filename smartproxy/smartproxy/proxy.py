@@ -380,6 +380,10 @@ class SmartproxyResource(resource.Resource):
 			request.args['heartbeat'] = ['true'] # uses httpd:changes_timeout config in couch
 			
 		kwargs = {'headers': request.getAllHeaders()}
+		if(request.getHeader('accept') == 'application/json'):
+			request.setHeader('content-type', 'application/json')
+		else:
+			request.setHeader('content-type', 'text/plain;charset=utf8')
 
 		input_xform, output_xform = changes.transformations(continuous)
 		json_output = streaming.LinePCP(request, xform = output_xform)
