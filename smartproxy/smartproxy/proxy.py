@@ -433,7 +433,7 @@ class SmartproxyResource(resource.Resource):
 				for node, seq in rep_since.iteritems():
 					host, port = self.conf_data.nodelist[int(node)]
 					yield ("http://%s:%d/%s/_changes?since=%s&%s" %
-					       (host, port, shards[int(shard_id)], seq, qs))
+					       (host, port, shards[int(shard_id)], seq, qs)).strip('&')
 			shard_channel = shard_proxy.createChannel(shard_id)
 			rep_proxy = changes.ChangesProxy(shard_channel,
 							 since[shard_id])
