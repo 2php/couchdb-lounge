@@ -30,6 +30,7 @@ import cjson
 from twisted.python import log
 from twisted.internet import defer
 from twisted.internet import protocol, reactor, defer, process, task, threads
+from twisted.internet.error import ConnectError
 from twisted.protocols import basic
 from twisted.web import server, resource, client
 from twisted.python.failure import DefaultException
@@ -62,7 +63,7 @@ def getPageFromAny(upstreams, factory=client.HTTPClientFactory,
 			try:
 				yield (wait.getResult(), identifier, subfactory)
 				return
-			except:
+			except ConnectError:
 				lastError = sys.exc_info()[1]
 		raise lastError and lastError or error.Error(http.INTERNAL_SERVER_ERROR)
 	return defer.deferredGenerator(subgen)()
