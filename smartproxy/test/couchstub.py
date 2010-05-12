@@ -78,9 +78,9 @@ class Request:
     self.body = body
     self.headers = headers
 
-  def reply(self, code, body, headers={}, delay=0):
+  def reply(self, code, body, headers={}, delay=0, raw_body=False):
     self.responsecode = code
-    self.responsebody = cjson.encode(body)
+    self.responsebody = raw_body and body or cjson.encode(body)
     self.responseheaders = headers
     self.delay = delay
     if 'content-type' not in [k.lower() for k in self.responseheaders.keys()]:
