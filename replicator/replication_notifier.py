@@ -105,7 +105,7 @@ def load_config(fname):
 	global shard_map
 	old = shard_map
 
-	shard_map = lounge.ShardMap()
+	shard_map = lounge.ShardMap(fname=fname)
 	try:
 		pass
 	except:
