@@ -119,8 +119,11 @@ def make_success_callback(request):
 def make_errback(request):
 	def handle_error(reason):
 		if reason.check(error.Error):
-			request.setResponseCode(int(reason.value.status), reason.value.message)
-			if(reason.value.response):
+			if hasattr(reason.value, 'message'):
+				request.setResponseCode(int(reason.value.status), reason.value.message)
+			else:
+				request.setResponseCode(int(reason.value.status))
+			if hasattr(reason.value, 'response') and reason.value.response:
 				request.write(reason.value.response)
 			request.finish()
 		else:
