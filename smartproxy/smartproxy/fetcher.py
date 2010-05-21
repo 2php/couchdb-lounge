@@ -164,8 +164,9 @@ class UuidFetcher(HttpFetcher):
 
 
 class MapResultFetcher(HttpFetcher):
-	def __init__(self, shard, nodes, reducer, deferred, client_queue):
+	def __init__(self, shard, nodes, reducer, deferred, client_queue, body=None):
 		HttpFetcher.__init__(self, shard, nodes, deferred, client_queue)
+		self._body = body
 		self._reducer = reducer
 
 	def _onsuccess(self, page):
@@ -186,7 +187,10 @@ class MapResultFetcher(HttpFetcher):
 
 		self._remaining_nodes = self._remaining_nodes[1:]
 		if method=='POST':
-			body = request and request.content.read() or ''
+			if self._body:
+				body = self._body
+			else:
+				body = request and request.content.read() or ''
 			self.factory = getPageWithHeaders(url=url, postdata=body, method=method, headers=self._headers)
 		else:
 			self.factory = getPageWithHeaders(url=url, method=method, headers=self._headers)

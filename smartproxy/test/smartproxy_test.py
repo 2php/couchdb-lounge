@@ -280,6 +280,57 @@ class ProxyTest(TestCase):
 		self.assertEqual(resp.body["rows"][2]["key"], "c")
 		self.assertEqual(resp.body["rows"][3]["key"], "d")
 
+	def testMultikeyGet(self):
+		"""Make a temp view."""
+		be1 = CouchStub()
+		be1_request = be1.expect_POST("/funstuff0/_all_docs?include_docs=true")
+		be1_request.reply(200, dict(
+			total_rows=2,
+			offset=0,
+			rows=[
+				{"id":"a", "key":"a", "value": {"rev":"2"},"doc":"b"},
+				{"id":"c", "key":"c", "value": {"rev":"3"},"doc":"d"}
+			]))
+		be1.listen("localhost", 23456)
+
+		be2 = CouchStub()
+		be2_request = be2.expect_POST("/funstuff1/_all_docs?include_docs=true")
+		be2_request.reply(200, dict(
+			total_rows=2,
+			offset=0,
+			rows=[
+				{"id":"b", "key":"b", "value": {"rev":"7"},"doc":"z"},
+				{"id":"y", "key":"y", "value": {"rev":"9"},"doc":"w"}
+			]))
+		be2.listen("localhost", 34567)
+
+		resp = post("http://localhost:22008/funstuff/_all_docs?include_docs=true", body={"keys":["a","c","x","y"]})
+
+		be1.verify()
+		be2.verify()
+		
+		be1_post = cjson.decode(be1_request.input_body)
+		be2_post = cjson.decode(be2_request.input_body)
+
+		def hash(x):
+			crc = zlib.crc32(x,0)
+			return (crc >> 16)&0x7fff
+
+		keys1 = be1_post['keys']
+		keys2 = be2_post['keys']
+		keys = {0:keys1, 1:keys2}
+		num_shards = 2
+		for v, k in keys.items():
+			for key in k:
+				self.assertEqual(hash(key) % num_shards, int(v))
+
+		self.assertEqual(resp.body["total_rows"], 4)
+		self.assertEqual(resp.body["offset"], 0)
+		self.assertEqual(len(resp.body["rows"]), 4)
+		rows = [x["key"] for x in resp.body["rows"]]
+		rows.sort()
+		self.assertEqual(rows, ["a","b","c","y"])
+
 	def testReverse(self):
 		"""Query a view with descending=true"""
 		be1 = CouchStub()

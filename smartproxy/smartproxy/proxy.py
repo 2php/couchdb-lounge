@@ -24,6 +24,7 @@ import re
 import sys
 import time
 import urllib
+import zlib
 
 from zope.interface import implements
 
@@ -44,6 +45,10 @@ import streaming
 import reducer
 
 from lrucache import LRUCache
+
+def hash(x):
+        crc = zlib.crc32(x,0)
+        return (crc >> 16)&0x7fff
 
 def normalize_header(h):
 	return '-'.join([word.capitalize() for word in h.split('-')])
@@ -488,10 +493,23 @@ class SmartproxyResource(resource.Resource):
 		# this is exactly like a view with no reduce
 		shards = self.conf_data.shards(database)
 		reducer = AllDocsReducer(None, len(shards), request.args, deferred, self.reduce_queue)
-		for shard in shards:
+
+		#hash keys
+		numShards = len(shards)
+		shardContent = [[] for x in shards]
+		body = cjson.decode(request.content.read())
+		if 'keys' in body:
+			for key in body['keys']:
+				where = hash(key)%numShards
+				shardContent[where].append(key)
+
+		log.msg(shardContent)
+		for i,shard in enumerate(shards):
 			nodes = self.conf_data.nodes(shard)
 			urls = [self._rewrite_url("/".join([node, rest])) + qs for node in nodes]
-			fetcher = MapResultFetcher(shard, urls, reducer, deferred, self.client_queue)
+			shardBody =cjson.encode(dict(keys=shardContent[i]))
+			fetcher = MapResultFetcher(shard, urls, reducer, deferred, self.client_queue, body=shardBody)
+
 			fetcher.fetch(request)
 
 		return server.NOT_DONE_YET
@@ -602,6 +620,9 @@ class SmartproxyResource(resource.Resource):
 		# POST /db/_temp_view?options
 		if request.uri.endswith("/_temp_view") or ("/_temp_view?" in request.uri):
 			return self.render_temp_view(request)
+
+		if request.path.endswith("/_all_docs"):
+			return self.render_all_docs(request)
 
 		# POST /db/_ensure_full_commit
 		if request.uri.endswith("/_ensure_full_commit"):

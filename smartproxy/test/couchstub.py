@@ -28,6 +28,12 @@ class FakeCouchHandler(BaseHTTPRequestHandler):
     if ex.delay:
       time.sleep(ex.delay)
 
+    if "CONTENT-LENGTH" in self.headers:
+      content_len = int(self.headers['CONTENT-LENGTH'])
+      ex.input_body = self.rfile.read(content_len)
+    else:
+      ex.input_body = None
+
     # send the mocked request
     self.send_response(ex.responsecode)
     for k in ex.responseheaders:
