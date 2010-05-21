@@ -504,7 +504,6 @@ class SmartproxyResource(resource.Resource):
 				where = hash(key)%numShards
 				shardContent[where].append(key)
 
-		log.msg(shardContent)
 		for i,shard in enumerate(shards):
 			nodes = self.conf_data.nodes(shard)
 			urls = [self._rewrite_url("/".join([node, rest])) + qs for node in nodes]
