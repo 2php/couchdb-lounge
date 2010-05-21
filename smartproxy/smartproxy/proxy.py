@@ -497,7 +497,8 @@ class SmartproxyResource(resource.Resource):
 		#hash keys
 		numShards = len(shards)
 		shardContent = [[] for x in shards]
-		body = cjson.decode(request.content.read())
+		body = request.content.read()
+		body = body and cjson.decode(body) or {}
 		if 'keys' in body:
 			for key in body['keys']:
 				where = hash(key)%numShards
