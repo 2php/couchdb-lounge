@@ -594,7 +594,7 @@ class View(Resource):
 
 	def get_results(self, args):
 		return self._request('GET', self.url(), args=args)
-	
+
 	def save(self, **kwargs):
 		raise NotImplementedError
 
@@ -610,6 +610,19 @@ class AllDocView(View):
 	@classmethod
 	def make_key(cls):
 		return '_all_docs'
+
+class BulkDocView(View):
+	@classmethod
+	def make_key(cls):
+		return '_all_docs'
+
+	def get_results(self, args):
+		return self._request('POST', self.url(), args=args, body=self._rec)
+
+	@classmethod
+	def fetch(cls, db, keys):
+		"""Convenience method for fetching documents.  Automatically sets include_docs"""
+		return cls.execute(db, keys=keys, args=dict(include_docs=True))
 
 class Attachment(Resource):
 	"""A Resource with special encoding.

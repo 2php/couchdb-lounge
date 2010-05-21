@@ -30,6 +30,19 @@ class LoungeTestCase(TestCase):
 		time.sleep(0.5)
 		Database.find("pytest").destroy()
 
+	def testBulkDocGet(self):
+		"""Test bulk document retrieval"""
+
+		a = TestDoc.create("a", x=1, y=1)
+		b = TestDoc.create("b", x=2, y=4)
+		c = TestDoc.create("c", x=3, y=9)
+		d = TestDoc.create("d", x=4, y=16)
+
+		view = BulkDocView.fetch("pytest", ["a", "d"])
+		self.assertEqual(len(view.rows), 2)
+		self.assertEqual(view.rows[0][0], 'a')
+		self.assertEqual(view.rows[1][0], 'd')
+
 	def testBasics(self):
 		"""Test some basic read/write operations."""
 		a = TestDoc.create("a", x=1, y=1)
