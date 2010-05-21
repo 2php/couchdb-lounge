@@ -1,4 +1,6 @@
 Meebo Smart Proxy for CouchDB
+#1.1.16 05/20/2010
+- Implement bulk GETs
 #1.1.15 11/10/2009
 - Fix view errors
 #1.1.14 03/11/2009
