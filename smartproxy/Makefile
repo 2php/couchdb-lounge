@@ -22,7 +22,7 @@ install:
 
 rpm:
 	echo $(PY_VERSION)
-	python setup.py bdist_rpm --release="$(RELEASE)" --requires "Twisted, python-pyicu, python-cjson, zope.interface, python-lounge >= 1.3.3" $(PY_EXTRA)
+	python setup.py bdist_rpm --release="$(RELEASE)" --requires "Twisted >= 8.2, python-pyicu, python-cjson, zope.interface, python-lounge >= 1.3.3" $(PY_EXTRA)
 
 clean:
 	rm -f MANIFEST
