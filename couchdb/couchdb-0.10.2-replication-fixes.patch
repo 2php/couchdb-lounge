@@ -1,5 +1,5 @@
 diff --git a/src/couchdb/couch_rep.erl b/src/couchdb/couch_rep.erl
-index 1cd484b..6e38d98 100644
+index 1cd484b..7226ece 100644
 --- a/src/couchdb/couch_rep.erl
 +++ b/src/couchdb/couch_rep.erl
 @@ -322,6 +322,27 @@ dbinfo(Db) ->
@@ -55,20 +55,6 @@ index 1cd484b..6e38d98 100644
          NewHistoryEntry = {[
              {<<"session_id">>, SessionId},
              {<<"start_time">>, list_to_binary(ReplicationStartTime)},
-@@ -501,11 +526,11 @@ do_checkpoint(State) ->
-             {<<"doc_write_failures">>, 
-                 ets:lookup_element(Stats, doc_write_failures, 2)}
-         ]},
--        % limit history to 50 entries
-+        % limit history to 5 entries
-         NewRepHistory = {[
-             {<<"session_id">>, SessionId},
-             {<<"source_last_seq">>, NewSeqNum},
--            {<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 50)}
-+            {<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 5)}
-         ]},
- 
-         try
 @@ -525,21 +550,7 @@ do_checkpoint(State) ->
          State
          end;
