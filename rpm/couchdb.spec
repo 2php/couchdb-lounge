@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        1%{?dist}.lounge2
+Release:        1%{?dist}.lounge3
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -155,6 +155,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Wed May 26 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-3
+- fix regression in replication fixes patch
+
 * Tue May 25 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-2
 - add synchronous logging patch
 
