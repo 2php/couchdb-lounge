@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        1%{?dist}.lounge1
+Release:        1%{?dist}.lounge2
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -19,6 +19,7 @@ Patch3:         %{name}-%{version}-mochiweb-max.patch
 Patch4:         %{name}-%{version}-replication-fixes.patch
 Patch5:         %{name}-%{version}-attbackoff.patch
 Patch6:         %{name}-%{version}-replicator-settings.patch
+Patch7:         %{name}-%{version}-sync-logging.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -57,6 +58,7 @@ JavaScript acting as the default view definition language.
 %patch4 -p1 -b .replication-fixes
 %patch5 -p1 -b .attbackoff
 %patch6 -p1 -b .replicator-settings
+%patch7 -p1 -b .sync-logging
 # Patch pid location
 #sed -i 's/%localstatedir%\/run\/couchdb.pid/%localstatedir%\/run\/couchdb\/couchdb.pid/g' \
 #bin/couchdb.tpl.in
@@ -153,6 +155,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Tue May 25 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-2
+- add synchronous logging patch
+
 * Tue May 25 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-1
 - update to 0.10.2 and fold checkpoints into rep-fixes patch
 
