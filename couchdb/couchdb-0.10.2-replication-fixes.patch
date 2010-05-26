@@ -1,6 +1,7 @@
 diff --git a/src/couchdb/couch_rep.erl b/src/couchdb/couch_rep.erl
---- apache-couchdb-0.10.1/src/couchdb/couch_rep.erl
-+++ apache-couchdb-0.10.1/src/couchdb/couch_rep.erl
+index 1cd484b..6e38d98 100644
+--- a/src/couchdb/couch_rep.erl
++++ b/src/couchdb/couch_rep.erl
 @@ -322,6 +322,27 @@ dbinfo(Db) ->
      {ok, Info} = couch_db:get_db_info(Db),
      Info.
@@ -54,12 +55,22 @@ diff --git a/src/couchdb/couch_rep.erl b/src/couchdb/couch_rep.erl
          NewHistoryEntry = {[
              {<<"session_id">>, SessionId},
              {<<"start_time">>, list_to_binary(ReplicationStartTime)},
-@@ -522,22 +547,10 @@ do_checkpoint(State) ->
-         catch throw:conflict ->
-         ?LOG_ERROR("checkpoint failure: conflict (are you replicating to "
-             "yourself?)", []),
--        State
-+        do_restart(State)
+@@ -501,11 +526,11 @@ do_checkpoint(State) ->
+             {<<"doc_write_failures">>, 
+                 ets:lookup_element(Stats, doc_write_failures, 2)}
+         ]},
+-        % limit history to 50 entries
++        % limit history to 5 entries
+         NewRepHistory = {[
+             {<<"session_id">>, SessionId},
+             {<<"source_last_seq">>, NewSeqNum},
+-            {<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 50)}
++            {<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 5)}
+         ]},
+ 
+         try
+@@ -525,21 +550,7 @@ do_checkpoint(State) ->
+         State
          end;
      _Else ->
 -        ?LOG_INFO("rebooting ~s -> ~s from last known replication checkpoint",
@@ -70,15 +81,32 @@ diff --git a/src/couchdb/couch_rep.erl b/src/couchdb/couch_rep.erl
 -            reader = Reader,
 -            writer = Writer
 -        } = State,
--        Pids = [CF, MR, Reader, Writer],
+-        Pids = [Writer, Reader, MR, CF],
 -        [unlink(Pid) || Pid <- Pids],
 -        [exit(Pid, shutdown) || Pid <- Pids],
+-        close_db(Target),
+-        close_db(Source),
 -        {ok, NewState} = init(State#state.init_args),
 -        NewState
 +        do_restart(State)
      end.
  
  commit_to_both(Source, Target, RequiredSeq) ->
--- 
-1.6.3.3
-
+@@ -563,8 +574,7 @@ commit_to_both(Source, Target, RequiredSeq) ->
+ ensure_full_commit(#http_db{} = Target) ->
+     Req = Target#http_db{
+         resource = "_ensure_full_commit",
+-        method = post,
+-        body = true
++        method = post
+     },
+     {ResultProps} = couch_rep_httpc:request(Req),
+     true = proplists:get_value(<<"ok">>, ResultProps),
+@@ -589,7 +599,6 @@ ensure_full_commit(#http_db{} = Source, RequiredSeq) ->
+     Req = Source#http_db{
+         resource = "_ensure_full_commit",
+         method = post,
+-        body = true,
+         qs = [{seq, RequiredSeq}]
+     },
+     {ResultProps} = couch_rep_httpc:request(Req),
