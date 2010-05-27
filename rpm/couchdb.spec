@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        1%{?dist}.lounge3
+Release:        1%{?dist}.lounge4
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -155,6 +155,10 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Thu May 27 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-4
+- su instead of daemon in couchdb.init, let couch manage daemonizing
+- use COUCHDB_USER variable from /etc/sysconfig/couchdb
+
 * Wed May 26 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-3
 - fix regression in replication fixes patch
 

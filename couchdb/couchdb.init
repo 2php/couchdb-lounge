@@ -36,7 +36,7 @@ start() {
     [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     [ -z "$COUCHDB_ULIMIT_OPTIONS" ] || ulimit $COUCHDB_ULIMIT_OPTIONS
-    daemon --user couchdb "$exec -b -r $COUCHDB_RESPAWN_TIMEOUT -o $COUCHDB_STDOUT_FILE -e $COUCHDB_STDERR_FILE $COUCHDB_OPTIONS"
+    su -c "$exec -b -r $COUCHDB_RESPAWN_TIMEOUT -o $COUCHDB_STDOUT_FILE -e $COUCHDB_STDERR_FILE $COUCHDB_OPTIONS" - $COUCHDB_USER
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
@@ -45,7 +45,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    daemon --user couchdb "$exec -d"
+    su -c "$exec -d" - $COUCHDB_USER
     retval=$?
     echo
     [ $retval -eq 0 ] && rm -f $lockfile
