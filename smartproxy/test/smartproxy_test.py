@@ -37,6 +37,9 @@ def req(url, method, body=None, headers=None):
 			curl.setopt(pycurl.INFILESIZE, len(body))
 			curl.setopt(pycurl.READFUNCTION, inbuf.read)
 		curl.setopt(pycurl.HTTPHEADER, ['Content-type: application/json'])
+	
+	# prevent tests from hanging if the smartproxy hangs
+	curl.setopt(pycurl.TIMEOUT, 5)
 
 	if method=='PUT':
 		curl.setopt(pycurl.UPLOAD, 1)
@@ -312,7 +315,7 @@ class ProxyTest(TestCase):
 		be1_post = cjson.decode(be1_request.input_body)
 		be2_post = cjson.decode(be2_request.input_body)
 
-		def hash(x):
+		def lounge_hash(x):
 			crc = zlib.crc32(x,0)
 			return (crc >> 16)&0x7fff
 
@@ -322,7 +325,7 @@ class ProxyTest(TestCase):
 		num_shards = 2
 		for v, k in keys.items():
 			for key in k:
-				self.assertEqual(hash(key) % num_shards, int(v))
+				self.assertEqual(lounge_hash(key) % num_shards, int(v))
 
 		self.assertEqual(resp.body["total_rows"], 4)
 		self.assertEqual(resp.body["offset"], 0)
@@ -371,6 +374,51 @@ class ProxyTest(TestCase):
 		self.assertEqual(resp.body["rows"][1]["key"], "2")
 		self.assertEqual(resp.body["rows"][2]["key"], "1")
 		self.assertEqual(resp.body["rows"][3]["key"], "0")
+	
+	def testBulkDocs(self):
+		be1 = CouchStub()
+		be1_request = be1.expect_POST("/funstuff0/_bulk_docs")
+		be1_request.reply(201, [
+			{"id":"b","rev":"1-23456"},
+			{"id":"e","error":"conflict","reason":"Document update conflict."}
+		])
+		be1.listen("localhost", 23456)
+
+		be2 = CouchStub()
+		be2_request = be2.expect_POST("/funstuff1/_bulk_docs")
+		be2_request.reply(201, [
+			{"id":"a","rev":"1-23456"},
+			{"id":"c","rev":"2-34567"}
+		])
+		be2.listen("localhost", 34567)
+
+		resp = post("http://localhost:22008/funstuff/_bulk_docs", {"docs":[
+			{"_id":"a","how":"low"},
+			{"_id":"b","can":"a"},
+			{"_id":"c","punk":"get"},
+			{"_id":"e","bannedin":"dc"}
+		]})
+
+		be1.verify()
+		be2.verify()
+
+		be1_post = cjson.decode(be1_request.input_body)
+		be2_post = cjson.decode(be2_request.input_body)
+
+		self.assertEqual(len(resp.body), 4)
+		for row in resp.body:
+			if row['id']=='e':
+				self.assertEqual(row['error'],'conflict')
+			else:
+				assert "rev" in row
+
+		be1_post = cjson.decode(be1_request.input_body)
+		self.assertEqual(len(be1_post['docs']), 2)
+		self.assertEqual(sorted([row['_id'] for row in be1_post['docs']]), ['b', 'e'])
+
+		be2_post = cjson.decode(be2_request.input_body)
+		self.assertEqual(len(be2_post['docs']), 2)
+		self.assertEqual(sorted([row['_id'] for row in be2_post['docs']]), ['a', 'c'])
 
 if __name__=="__main__":
 	if os.environ.get("DEBUG",False):
