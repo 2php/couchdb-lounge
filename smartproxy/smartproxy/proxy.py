@@ -47,8 +47,8 @@ import reducer
 from lrucache import LRUCache
 
 def lounge_hash(x):
-        crc = zlib.crc32(x,0)
-        return (crc >> 16)&0x7fff
+	crc = zlib.crc32(x,0)
+	return (crc >> 16)&0x7fff
 
 def normalize_header(h):
 	return '-'.join([word.capitalize() for word in h.split('-')])
@@ -617,8 +617,7 @@ class SmartproxyResource(resource.Resource):
 		deferred.addErrback(make_errback(request))
 
 		# build the query string to send to shard requests
-		strip_params = ['skip'] # handled by smartproxy, do not pass
-		args = dict([(k,v) for k,v in request.args.iteritems() if k.lower() not in strip_params])
+		args = dict([(k,v) for k,v in request.args.iteritems()])
 		qs = urllib.urlencode([(k,v) for k in args for v in args[k]] or '')
 		if qs: qs = '?' + qs
 
@@ -636,8 +635,6 @@ class SmartproxyResource(resource.Resource):
 				doc_id = doc['_id']
 				where = lounge_hash(doc_id) % numShards
 				shardContent[where].append(doc)
-		for i,x in enumerate(shardContent):
-			log.msg(str(i) + "=> " + str(x))
 
 		for i,shard in enumerate(shards):
 			nodes = self.conf_data.nodes(shard)
@@ -649,8 +646,6 @@ class SmartproxyResource(resource.Resource):
 
 		return server.NOT_DONE_YET
 
-		return server.NOT_DONE_YET
-	
 	def render_POST(self, request):
 		"""Create all the shards for a database."""
 		db, rest = request.uri[1:], None
