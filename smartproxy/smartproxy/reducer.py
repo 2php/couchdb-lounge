@@ -380,6 +380,11 @@ class AllDocsReducer(Reducer):
 		# merge and unique.  no reduce
 		self.queue_data(merge(a, b, unique=True, descending=self.descending))
 
+class BulkDocsReducer(Reducer):
+	def _do_reduce(self, a, b):
+		"""Mash two arrays together"""
+		self.queue_data(a + b)
+
 class ChangesReducer(Reducer):
 	def __init__(self, seq, deferred):
 		self._sequence = seq

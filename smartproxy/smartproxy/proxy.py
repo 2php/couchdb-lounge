@@ -38,7 +38,7 @@ from twisted.python.failure import DefaultException
 
 from fetcher import HttpFetcher, MapResultFetcher, DbFetcher, DbGetter, ViewFetcher, AllDbFetcher, ProxyFetcher, ChangesFetcher, UuidFetcher, getPageWithHeaders, getPageFromAny, getPageFromAll
 
-from reducer import ReduceQueue, ReducerProcessProtocol, Reducer, AllDocsReducer, ChangesReducer
+from reducer import ReduceQueue, ReducerProcessProtocol, Reducer, AllDocsReducer, ChangesReducer, BulkDocsReducer
 
 import changes
 import streaming
@@ -46,9 +46,9 @@ import reducer
 
 from lrucache import LRUCache
 
-def hash(x):
-        crc = zlib.crc32(x,0)
-        return (crc >> 16)&0x7fff
+def lounge_hash(x):
+	crc = zlib.crc32(x,0)
+	return (crc >> 16)&0x7fff
 
 def normalize_header(h):
 	return '-'.join([word.capitalize() for word in h.split('-')])
@@ -501,7 +501,7 @@ class SmartproxyResource(resource.Resource):
 		body = body and cjson.decode(body) or {}
 		if 'keys' in body:
 			for key in body['keys']:
-				where = hash(key)%numShards
+				where = lounge_hash(key)%numShards
 				shardContent[where].append(key)
 
 		for i,shard in enumerate(shards):
@@ -608,6 +608,44 @@ class SmartproxyResource(resource.Resource):
 
 		return cjson.encode({"error": "smartproxy is not smart enough for that request"})+"\n"
 	
+	def do_bulk_docs(self, request):
+		"""Split and farm out bulk docs"""
+		# /database/_all_docs?stuff => database, _all_docs?stuff
+		database, rest = request.path[1:].split('/', 1)
+		deferred = defer.Deferred()
+		deferred.addCallback(make_success_callback(request))
+		deferred.addErrback(make_errback(request))
+
+		# build the query string to send to shard requests
+		args = dict([(k,v) for k,v in request.args.iteritems()])
+		qs = urllib.urlencode([(k,v) for k in args for v in args[k]] or '')
+		if qs: qs = '?' + qs
+
+		# this is exactly like a view with no reduce
+		shards = self.conf_data.shards(database)
+		reducer = BulkDocsReducer(None, len(shards), request.args, deferred, self.reduce_queue)
+
+		#hash keys
+		numShards = len(shards)
+		shardContent = [[] for x in shards]
+		body = request.content.read()
+		body = body and cjson.decode(body) or {}
+		if 'docs' in body:
+			for doc in body['docs']:
+				doc_id = doc['_id']
+				where = lounge_hash(doc_id) % numShards
+				shardContent[where].append(doc)
+
+		for i,shard in enumerate(shards):
+			nodes = self.conf_data.nodes(shard)
+			urls = [self._rewrite_url("/".join([node, rest])) + qs for node in nodes]
+			shardBody = cjson.encode(dict(docs=shardContent[i]))
+
+			fetcher = MapResultFetcher(shard, urls, reducer, deferred, self.client_queue, body=shardBody)
+			fetcher.fetch(request)
+
+		return server.NOT_DONE_YET
+
 	def render_POST(self, request):
 		"""Create all the shards for a database."""
 		db, rest = request.uri[1:], None
@@ -627,6 +665,9 @@ class SmartproxyResource(resource.Resource):
 		# POST /db/_ensure_full_commit
 		if request.uri.endswith("/_ensure_full_commit"):
 			return self.do_db_op(request)
+
+		if request.uri.endswith("/_bulk_docs") or ("/_bulk_docs?" in request.uri):
+			return self.do_bulk_docs(request)
 
 		# PUT /db/_somethingspecial
 		if re.match(r'/[^/]+/_.*', request.uri):
