@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        1%{?dist}.lounge6
+Release:        3%{?dist}.lounge1
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -155,7 +155,7 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
-* Tue Jun  8 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-6
+* Tue Jun  8 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-3-1
 - Revert to using daemon. Sync up with upstream rpm.
 
 * Fri May 28 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-5
