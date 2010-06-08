@@ -13,7 +13,7 @@ URL:            http://couchdb.apache.org/
 Source0:        http://www.apache.org/dist/%{name}/%{version}/%{tarname}-%{version}.tar.gz
 Source1:        %{name}.init
 Patch0:         %{name}-%{version}-initenabled.patch
-Patch1:         %{name}-%{version}-install-lib-location.patch
+Patch1:         %{name}-%{version}-fix-install-lib-location.patch
 Patch2:         %{name}-%{version}-designreplication.patch
 Patch3:         %{name}-%{version}-597fix.patch
 Patch4:         %{name}-%{version}-mochiweb-max.patch
