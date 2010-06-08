@@ -69,6 +69,18 @@ def should_regenerate(now, cached_at, cachetime):
 	p = 1 - (time_left/float(5*60))
 	return random.random() < p
 
+def get_body(request, default=None):
+	if hasattr(request, 'getvalue'):
+		# request is a StringIO. twistd probably already parsed it based on content-type
+		body = request.getvalue()
+	else:
+		body = request.content.read()
+	if body:
+		body = cjson.decode(body)
+	else:
+		body = default
+	return body
+
 class ClientQueue:
 	def __init__(self, prefs):
 		self.queue = []
@@ -188,8 +200,7 @@ class SmartproxyResource(resource.Resource):
 		deferred.addCallback(make_success_callback(request))
 		deferred.addErrback(make_errback(request))
 
-		raw_body = request.content.read()
-		body = cjson.decode(raw_body)
+		body = get_body(request)
 		reduce_fn = body.get("reduce", None)
 		if reduce_fn is not None:
 			reduce_fn = reduce_fn.replace("\n", " ") # TODO do we need this?
@@ -497,8 +508,7 @@ class SmartproxyResource(resource.Resource):
 		#hash keys
 		numShards = len(shards)
 		shardContent = [[] for x in shards]
-		body = request.content.read()
-		body = body and cjson.decode(body) or {}
+		body = get_body(request, {})
 		if 'keys' in body:
 			for key in body['keys']:
 				where = lounge_hash(key)%numShards
@@ -628,8 +638,7 @@ class SmartproxyResource(resource.Resource):
 		#hash keys
 		numShards = len(shards)
 		shardContent = [[] for x in shards]
-		body = request.content.read()
-		body = body and cjson.decode(body) or {}
+		body = get_body(request, {})
 		if 'docs' in body:
 			for doc in body['docs']:
 				doc_id = doc['_id']
