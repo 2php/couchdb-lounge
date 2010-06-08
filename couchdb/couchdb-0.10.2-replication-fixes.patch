@@ -1,8 +1,23 @@
 diff --git a/src/couchdb/couch_rep.erl b/src/couchdb/couch_rep.erl
-index 1cd484b..7226ece 100644
+index 1cd484b..bc80002 100644
 --- a/src/couchdb/couch_rep.erl
 +++ b/src/couchdb/couch_rep.erl
-@@ -322,6 +322,27 @@ dbinfo(Db) ->
+@@ -164,7 +164,13 @@ handle_call(get_result, From, State) ->
+     {noreply, State#state{listeners=[From|Listeners]}}.
+ 
+ handle_cast(do_checkpoint, State) ->
+-    {noreply, do_checkpoint(State)};
++    try
++    {noreply, do_checkpoint(State)}
++    catch throw:conflict ->
++    ?LOG_ERROR("checkpoint failure: conflict (are you replicating to "
++            "yourself?)", []),
++    {stop, {checkpoint_failure, conflict}}
++    end;
+ 
+ handle_cast(_Msg, State) ->
+     {noreply, State}.
+@@ -322,6 +328,27 @@ dbinfo(Db) ->
      {ok, Info} = couch_db:get_db_info(Db),
      Info.
  
@@ -30,7 +45,7 @@ index 1cd484b..7226ece 100644
  do_terminate(State) ->
      #state{
          checkpoint_history = CheckpointHistory,
-@@ -474,12 +495,12 @@ do_checkpoint(State) ->
+@@ -474,12 +501,12 @@ do_checkpoint(State) ->
          target = Target,
          committed_seq = NewSeqNum,
          start_seq = StartSeqNum,
@@ -44,7 +59,7 @@ index 1cd484b..7226ece 100644
          stats = Stats
      } = State,
      case commit_to_both(Source, Target, NewSeqNum) of
-@@ -487,6 +508,10 @@ do_checkpoint(State) ->
+@@ -487,6 +514,10 @@ do_checkpoint(State) ->
          ?LOG_INFO("recording a checkpoint for ~s -> ~s at source update_seq ~p",
              [dbname(Source), dbname(Target), NewSeqNum]),
          SessionId = couch_util:new_uuid(),
@@ -55,9 +70,25 @@ index 1cd484b..7226ece 100644
          NewHistoryEntry = {[
              {<<"session_id">>, SessionId},
              {<<"start_time">>, list_to_binary(ReplicationStartTime)},
-@@ -525,21 +550,7 @@ do_checkpoint(State) ->
-         State
-         end;
+@@ -508,7 +539,6 @@ do_checkpoint(State) ->
+             {<<"history">>, lists:sublist([NewHistoryEntry | OldHistory], 50)}
+         ]},
+ 
+-        try
+         {SrcRevPos,SrcRevId} =
+             update_local_doc(Source, SourceLog#doc{body=NewRepHistory}),
+         {TgtRevPos,TgtRevId} =
+@@ -518,28 +548,9 @@ do_checkpoint(State) ->
+             checkpoint_history = NewRepHistory,
+             source_log = SourceLog#doc{revs={SrcRevPos, [SrcRevId]}},
+             target_log = TargetLog#doc{revs={TgtRevPos, [TgtRevId]}}
+-        }
+-        catch throw:conflict ->
+-        ?LOG_ERROR("checkpoint failure: conflict (are you replicating to "
+-            "yourself?)", []),
+-        State
+-        end;
++        };
      _Else ->
 -        ?LOG_INFO("rebooting ~s -> ~s from last known replication checkpoint",
 -            [dbname(Source), dbname(Target)]),

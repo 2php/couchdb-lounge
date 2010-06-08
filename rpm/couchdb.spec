@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        1%{?dist}.lounge4
+Release:        1%{?dist}.lounge6
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -13,24 +13,24 @@ URL:            http://couchdb.apache.org/
 Source0:        http://www.apache.org/dist/%{name}/%{version}/%{tarname}-%{version}.tar.gz
 Source1:        %{name}.init
 Patch0:         %{name}-%{version}-initenabled.patch
-Patch1:         %{name}-%{version}-designreplication.patch
-Patch2:         %{name}-%{version}-597fix.patch
-Patch3:         %{name}-%{version}-mochiweb-max.patch
-Patch4:         %{name}-%{version}-replication-fixes.patch
-Patch5:         %{name}-%{version}-attbackoff.patch
-Patch6:         %{name}-%{version}-replicator-settings.patch
-Patch7:         %{name}-%{version}-sync-logging.patch
+Patch1:         %{name}-%{version}-install-lib-location.patch
+Patch2:         %{name}-%{version}-designreplication.patch
+Patch3:         %{name}-%{version}-597fix.patch
+Patch4:         %{name}-%{version}-mochiweb-max.patch
+Patch5:         %{name}-%{version}-replication-fixes.patch
+Patch6:         %{name}-%{version}-attbackoff.patch
+Patch7:         %{name}-%{version}-replicator-settings.patch
+Patch8:         %{name}-%{version}-sync-logging.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
-BuildRequires:  libicu-devel 
-BuildRequires:  js-devel 
+BuildRequires:  libicu-devel
+BuildRequires:  js-devel
 BuildRequires:  help2man
-#BuildRequires:  libcurl-devel
 BuildRequires:  curl-devel
 
-Requires:       erlang 
-#Requires:       %{_bindir}/icu-config
+Requires:       erlang
+# For %{_bindir}/icu-config
 Requires:       libicu-devel
 
 #Initscripts
@@ -42,27 +42,26 @@ Requires(pre): shadow-utils
 
 
 %description
-Apache CouchDB is a distributed, fault-tolerant and schema-free 
-document-oriented database accessible via a RESTful HTTP/JSON API. 
-Among other features, it provides robust, incremental replication 
-with bi-directional conflict detection and resolution, and is 
-queryable and indexable using a table-oriented view engine with 
+Apache CouchDB is a distributed, fault-tolerant and schema-free
+document-oriented database accessible via a RESTful HTTP/JSON API.
+Among other features, it provides robust, incremental replication
+with bi-directional conflict detection and resolution, and is
+queryable and indexable using a table-oriented view engine with
 JavaScript acting as the default view definition language.
 
 %prep
 %setup -q -n %{tarname}-%{version}
 %patch0 -p1 -b .initenabled
-%patch1 -p1 -b .designreplication
-%patch2 -p1 -b .597fix
-%patch3 -p1 -b .mochiweb-max
-%patch4 -p1 -b .replication-fixes
-%patch5 -p1 -b .attbackoff
-%patch6 -p1 -b .replicator-settings
-%patch7 -p1 -b .sync-logging
-# Patch pid location
-#sed -i 's/%localstatedir%\/run\/couchdb.pid/%localstatedir%\/run\/couchdb\/couchdb.pid/g' \
-#bin/couchdb.tpl.in
-
+%patch1 -p0 -b .fix_lib_path
+%patch2 -p1 -b .designreplication
+%patch3 -p1 -b .597fix
+%patch4 -p1 -b .mochiweb-max
+%patch5 -p1 -b .replication-fixes
+%patch6 -p1 -b .attbackoff
+%patch7 -p1 -b .replicator-settings
+%patch8 -p1 -b .sync-logging
+touch -r configure.ac.initenabled configure.ac
+touch -r configure.fix_lib_path configure
 
 
 %build
@@ -105,6 +104,8 @@ rm -rf  $RPM_BUILD_ROOT%{_datadir}/doc/couchdb
 # clean-up .la archives
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
+# fix respawn timeout to match default value
+sed -i s,^COUCHDB_RESPAWN_TIMEOUT=5,COUCHDB_RESPAWN_TIMEOUT=0,g $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/couchdb
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -139,15 +140,14 @@ fi
 %dir %{_sysconfdir}/couchdb
 %dir %{_sysconfdir}/couchdb/local.d
 %dir %{_sysconfdir}/couchdb/default.d
-%attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/default.ini
+%config(noreplace) %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/default.ini
 %config(noreplace) %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/local.ini
 #%config(noreplace) %{_sysconfdir}/default/couchdb
 %config(noreplace) %{_sysconfdir}/sysconfig/couchdb
 %config(noreplace) %{_sysconfdir}/logrotate.d/couchdb
-#%config %{_sysconfdir}/rc.d/couchdb
 %{_initrddir}/couchdb
 %{_bindir}/*
-%{_libdir}/couchdb
+%{_libdir}/erlang/lib/*
 %{_datadir}/couchdb
 %{_mandir}/man1/*
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/log/couchdb
@@ -155,6 +155,12 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Tue Jun  8 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-6
+- Revert to using daemon. Sync up with upstream rpm.
+
+* Fri May 28 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-5
+- Update replication fixes patch to bail on checkpoint conflict
+
 * Thu May 27 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-4
 - su instead of daemon in couchdb.init, let couch manage daemonizing
 - use COUCHDB_USER variable from /etc/sysconfig/couchdb
@@ -166,9 +172,16 @@ fi
 - add synchronous logging patch
 
 * Tue May 25 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-1
-- update to 0.10.2 and fold checkpoints into rep-fixes patch
+- fold checkpoints into rep-fixes patch
 
-* Fri May 7 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-1
+* Thu May 13 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-3
+- Fixed init-script to use /etc/sysconfig/couchdb values (see rhbz #583004)
+- Fixed installation location of beam-files (moved to erlang directory)
+
+* Fri May  7 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-2
+- Remove useless BuildRequires
+
+* Fri May  7 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-1
 - Update to 0.10.2 (resolves rhbz #578580 and #572176)
 - Fixed chkconfig priority (see rhbz #579568)
 
