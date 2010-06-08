@@ -70,9 +70,9 @@ def should_regenerate(now, cached_at, cachetime):
 	return random.random() < p
 
 def get_body(request, default=None):
-	if hasattr(request, 'getvalue'):
+	if hasattr(request.content, 'getvalue'):
 		# request is a StringIO. twistd probably already parsed it based on content-type
-		body = request.getvalue()
+		body = request.content.getvalue()
 	else:
 		body = request.content.read()
 	if body:

@@ -420,6 +420,56 @@ class ProxyTest(TestCase):
 		self.assertEqual(len(be2_post['docs']), 2)
 		self.assertEqual(sorted([row['_id'] for row in be2_post['docs']]), ['a', 'c'])
 
+	def testBulkDocsWrongContentType(self):
+		"""Make a bulk_docs req with the wrong content-type.
+
+		We should handle this the same way a single node does (treat
+		the body as JSON)
+		"""
+		be1 = CouchStub()
+		be1_request = be1.expect_POST("/funstuff0/_bulk_docs")
+		be1_request.reply(201, [
+			{"id":"b","rev":"1-23456"},
+			{"id":"e","error":"conflict","reason":"Document update conflict."}
+		])
+		be1.listen("localhost", 23456)
+
+		be2 = CouchStub()
+		be2_request = be2.expect_POST("/funstuff1/_bulk_docs")
+		be2_request.reply(201, [
+			{"id":"a","rev":"1-23456"},
+			{"id":"c","rev":"2-34567"}
+		])
+		be2.listen("localhost", 34567)
+
+		resp = post("http://localhost:22008/funstuff/_bulk_docs", {"docs":[
+			{"_id":"a","how":"low"},
+			{"_id":"b","can":"a"},
+			{"_id":"c","punk":"get"},
+			{"_id":"e","bannedin":"dc"}
+		]}, {"Content-Type": "application/x-www-form-urlencoded"})
+
+		be1.verify()
+		be2.verify()
+
+		be1_post = cjson.decode(be1_request.input_body)
+		be2_post = cjson.decode(be2_request.input_body)
+
+		self.assertEqual(len(resp.body), 4)
+		for row in resp.body:
+			if row['id']=='e':
+				self.assertEqual(row['error'],'conflict')
+			else:
+				assert "rev" in row
+
+		be1_post = cjson.decode(be1_request.input_body)
+		self.assertEqual(len(be1_post['docs']), 2)
+		self.assertEqual(sorted([row['_id'] for row in be1_post['docs']]), ['b', 'e'])
+
+		be2_post = cjson.decode(be2_request.input_body)
+		self.assertEqual(len(be2_post['docs']), 2)
+		self.assertEqual(sorted([row['_id'] for row in be2_post['docs']]), ['a', 'c'])
+
 if __name__=="__main__":
 	if os.environ.get("DEBUG",False):
 		console = logging.StreamHandler()
