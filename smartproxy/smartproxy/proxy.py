@@ -74,6 +74,8 @@ def get_body(request, default=None):
 		# request is a StringIO. twistd probably already parsed it based on content-type
 		body = request.content.getvalue()
 	else:
+		if hasattr(request.content, 'seek'):
+			request.content.seek(0)
 		body = request.content.read()
 	if body:
 		body = cjson.decode(body)
