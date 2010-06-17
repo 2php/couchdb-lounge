@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        3%{?dist}.lounge1
+Release:        4%{?dist}.lounge1
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -14,13 +14,14 @@ Source0:        http://www.apache.org/dist/%{name}/%{version}/%{tarname}-%{versi
 Source1:        %{name}.init
 Patch0:         %{name}-%{version}-initenabled.patch
 Patch1:         %{name}-%{version}-fix-install-lib-location.patch
-Patch2:         %{name}-%{version}-designreplication.patch
-Patch3:         %{name}-%{version}-597fix.patch
-Patch4:         %{name}-%{version}-mochiweb-max.patch
-Patch5:         %{name}-%{version}-replication-fixes.patch
-Patch6:         %{name}-%{version}-attbackoff.patch
-Patch7:         %{name}-%{version}-replicator-settings.patch
-Patch8:         %{name}-%{version}-sync-logging.patch
+Patch2:         %{name}-%{version}-remove_bundled_oauth.diff
+Patch3:         %{name}-%{version}-designreplication.patch
+Patch4:         %{name}-%{version}-597fix.patch
+Patch5:         %{name}-%{version}-mochiweb-max.patch
+Patch6:         %{name}-%{version}-replication-fixes.patch
+Patch7:         %{name}-%{version}-attbackoff.patch
+Patch8:         %{name}-%{version}-replicator-settings.patch
+Patch9:         %{name}-%{version}-sync-logging.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -30,6 +31,7 @@ BuildRequires:  help2man
 BuildRequires:  curl-devel
 
 Requires:       erlang
+Requires:       erlang-oauth
 # For %{_bindir}/icu-config
 Requires:       libicu-devel
 
@@ -53,13 +55,15 @@ JavaScript acting as the default view definition language.
 %setup -q -n %{tarname}-%{version}
 %patch0 -p1 -b .initenabled
 %patch1 -p0 -b .fix_lib_path
-%patch2 -p1 -b .designreplication
-%patch3 -p1 -b .597fix
-%patch4 -p1 -b .mochiweb-max
-%patch5 -p1 -b .replication-fixes
-%patch6 -p1 -b .attbackoff
-%patch7 -p1 -b .replicator-settings
-%patch8 -p1 -b .sync-logging
+%patch2 -p0 -b .remove_bundled_oauth
+rm -rf src/erlang-oauth
+%patch3 -p1 -b .designreplication
+%patch4 -p1 -b .597fix
+%patch5 -p1 -b .mochiweb-max
+%patch6 -p1 -b .replication-fixes
+%patch7 -p1 -b .attbackoff
+%patch8 -p1 -b .replicator-settings
+%patch9 -p1 -b .sync-logging
 touch -r configure.ac.initenabled configure.ac
 touch -r configure.fix_lib_path configure
 
@@ -155,6 +159,10 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Thu Jun 17 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-1
+- Append COUCHDB-793 patch to replication-fixes, fixes hanging reps
+- cleanup and fixes to init script
+
 * Tue Jun  8 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-3-1
 - Revert to using daemon. Sync up with upstream rpm.
 
@@ -173,6 +181,9 @@ fi
 
 * Tue May 25 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-1
 - fold checkpoints into rep-fixes patch
+
+* Thu May 14 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-4
+- Use system-wide erlang-oauth instead of bundled copy
 
 * Thu May 13 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-3
 - Fixed init-script to use /etc/sysconfig/couchdb values (see rhbz #583004)
