@@ -44,8 +44,7 @@ start() {
     [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     rh_status_q && echo -n "already running" && warning && echo && exit 0
-    [ -z "$COUCHDB_ULIMIT_OPTIONS" ] || ulimit $COUCHDB_ULIMIT_OPTIONS
-    daemon --user $COUCHDB_USER "$exec \
+    su $COUCHDB_USER -c "$exec \
       -r $COUCHDB_RESPAWN_TIMEOUT \
       -o $COUCHDB_STDOUT_FILE \
       -e $COUCHDB_STDERR_FILE \
@@ -60,12 +59,25 @@ start() {
 stop() {
     echo -n $"Stopping $prog: "
     if ! rh_status_q ; then
-      echo -n "already stopped" && warning && echo && exit 0
+        echo -n "already stopped" && warning && echo && return 0
     fi
-    daemon --user couchdb "$exec -d"
+    su $COUCHDB_USER -c "$exec -d"
     retval=$?
     echo
-    [ $retval -eq 0 ] && rm -f $lockfile
+    if [ $retval -eq 0 ]; then
+        STOPTIMEOUT=60
+        while [ $STOPTIMEOUT -gt 0 ]; do
+            rh_status_q || break
+            sleep 1
+            let STOPTIMEOUT=${STOPTIMEOUT}-1
+        done
+        if [ $STOPTIMEOUT -eq 0 ]; then
+            echo "Timeout error occurred trying to stop CouchDB."
+            retval=1
+        else
+            rm -f $lockfile
+        fi
+    fi
     return $retval
 }
 
