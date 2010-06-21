@@ -3,7 +3,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        8%{?dist}.lounge2
+Release:        8%{?dist}.lounge3
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -162,13 +162,16 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
-* Mon Jun 20 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-2
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-3
+- `basename $0` to get $prog in init (symlink to run multiple couches)
+
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-2
 - login shell clears environment, instead explicitly cd during init
 
-* Mon Jun 20 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-1
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-1
 - Mostly sync up with upstream EPEL changes
 
-* Mon Jun 20 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-2
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-2
 - init script uses login shell, fixes permissions for config loading
 
 * Thu Jun 17 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-1
