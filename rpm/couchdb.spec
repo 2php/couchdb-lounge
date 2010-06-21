@@ -4,7 +4,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        4%{?dist}.lounge1
+Release:        4%{?dist}.lounge2
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -159,6 +159,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Mon Jun 20 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-2
+- init script uses login shell, fixes permissions for config loading
+
 * Thu Jun 17 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-1
 - Append COUCHDB-793 patch to replication-fixes, fixes hanging reps
 - cleanup and fixes to init script

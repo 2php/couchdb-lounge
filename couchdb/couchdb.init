@@ -44,7 +44,7 @@ start() {
     [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     rh_status_q && echo -n "already running" && warning && echo && exit 0
-    su $COUCHDB_USER -c "$exec \
+    su - $COUCHDB_USER -c "$exec \
       -r $COUCHDB_RESPAWN_TIMEOUT \
       -o $COUCHDB_STDOUT_FILE \
       -e $COUCHDB_STDERR_FILE \
@@ -61,7 +61,7 @@ stop() {
     if ! rh_status_q ; then
         echo -n "already stopped" && warning && echo && return 0
     fi
-    su $COUCHDB_USER -c "$exec -d"
+    su - $COUCHDB_USER -c "$exec -d"
     retval=$?
     echo
     if [ $retval -eq 0 ]; then
