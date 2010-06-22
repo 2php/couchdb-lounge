@@ -322,6 +322,9 @@ class Resource(object):
 
 	def __getitem__(self, key):
 		return self._rec[key]
+	
+	def __delitem__(self, key):
+		del self._rec[key]
 
 	def __getattr__(self, attr):
 		"""Allow apps to access document attributes directly.
