@@ -3,7 +3,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        8%{?dist}.lounge3
+Release:        8%{?dist}.lounge4
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -22,6 +22,7 @@ Patch8:         %{name}-%{version}-replication-fixes.patch
 Patch9:         %{name}-%{version}-attbackoff.patch
 Patch10:        %{name}-%{version}-replicator-settings.patch
 Patch11:        %{name}-%{version}-sync-logging.patch
+Patch12:        %{name}-%{version}-versioned-replication-ids.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -65,6 +66,7 @@ JavaScript acting as the default view definition language.
 %patch9 -p1 -b .attbackoff
 %patch10 -p1 -b .replicator-settings
 %patch11 -p1 -b .sync-logging
+%patch12 -p1 -b .versioned-replication-ids
 rm -rf src/erlang-oauth
 rm -rf src/etap
 # Restore original timestamps to avoid reconfiguring
@@ -162,6 +164,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Thu Jun 24 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-4
+- backport versioned replication id patch, fixes co-hosted couches
+
 * Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-3
 - `basename $0` to get $prog in init (symlink to run multiple couches)
 
