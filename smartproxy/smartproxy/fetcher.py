@@ -38,6 +38,8 @@ from twisted.web.client import _makeGetterFactory
 
 from reducer import Reducer
 
+import proxy
+
 def getPageWithHeaders(url, *args, **kwargs):
 	# basically a clone of client.getPage, but with a handle on the factory
 	# so we can pull the headers later
@@ -151,7 +153,7 @@ class UuidFetcher(HttpFetcher):
 	def put_doc(self, id):
 		# identify the shard for this uui
 		shards = self._config.primary_shards(self._db)
-		idx = (zlib.crc32(id, 0) >> 16) % len(shards)
+		idx = proxy.lounge_hash(id) % len(shards)
 		shard = shards[idx]
 
 		def succeed(data):
