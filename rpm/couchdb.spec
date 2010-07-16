@@ -1,27 +1,28 @@
-%define tarname apache-couchdb
 %define couchdb_user couchdb
 %define couchdb_group couchdb
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        4%{?dist}.lounge1
+Release:        8%{?dist}.lounge4
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
 License:        ASL 2.0
 URL:            http://couchdb.apache.org/
-Source0:        http://www.apache.org/dist/%{name}/%{version}/%{tarname}-%{version}.tar.gz
+Source0:        http://www.apache.org/dist/%{name}/%{version}/apache-%{name}-%{version}.tar.gz
 Source1:        %{name}.init
-Patch0:         %{name}-%{version}-initenabled.patch
-Patch1:         %{name}-%{version}-fix-install-lib-location.patch
-Patch2:         %{name}-%{version}-remove_bundled_oauth.diff
-Patch3:         %{name}-%{version}-designreplication.patch
-Patch4:         %{name}-%{version}-597fix.patch
-Patch5:         %{name}-%{version}-mochiweb-max.patch
-Patch6:         %{name}-%{version}-replication-fixes.patch
-Patch7:         %{name}-%{version}-attbackoff.patch
-Patch8:         %{name}-%{version}-replicator-settings.patch
-Patch9:         %{name}-%{version}-sync-logging.patch
+Patch1:         couchdb-0001-Force-init-script-installation.patch
+Patch2:         couchdb-0002-Install-into-erllibdir-by-default.patch
+Patch3:         couchdb-0003-Remove-bundled-erlang-oauth-library.patch
+Patch4:         couchdb-0004-Remove-bundled-erlang-etap-library.patch
+Patch5:         %{name}-%{version}-designreplication.patch
+Patch6:         %{name}-%{version}-597fix.patch
+Patch7:         %{name}-%{version}-mochiweb-max.patch
+Patch8:         %{name}-%{version}-replication-fixes.patch
+Patch9:         %{name}-%{version}-attbackoff.patch
+Patch10:        %{name}-%{version}-replicator-settings.patch
+Patch11:        %{name}-%{version}-sync-logging.patch
+Patch12:        %{name}-%{version}-versioned-replication-ids.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -29,6 +30,7 @@ BuildRequires:  libicu-devel
 BuildRequires:  js-devel
 BuildRequires:  help2man
 BuildRequires:  curl-devel
+#BuildRequires:  erlang-etap
 
 Requires:       erlang
 Requires:       erlang-oauth
@@ -52,18 +54,22 @@ queryable and indexable using a table-oriented view engine with
 JavaScript acting as the default view definition language.
 
 %prep
-%setup -q -n %{tarname}-%{version}
-%patch0 -p1 -b .initenabled
-%patch1 -p0 -b .fix_lib_path
-%patch2 -p0 -b .remove_bundled_oauth
+%setup -q -n apache-%{name}-%{version}
+%patch1 -p1 -b .initenabled
+%patch2 -p1 -b .fix_lib_path
+%patch3 -p1 -b .remove_bundled_oauth
+%patch4 -p1 -b .remove_bundled_etap
+%patch5 -p1 -b .designreplication
+%patch6 -p1 -b .597fix
+%patch7 -p1 -b .mochiweb-max
+%patch8 -p1 -b .replication-fixes
+%patch9 -p1 -b .attbackoff
+%patch10 -p1 -b .replicator-settings
+%patch11 -p1 -b .sync-logging
+%patch12 -p1 -b .versioned-replication-ids
 rm -rf src/erlang-oauth
-%patch3 -p1 -b .designreplication
-%patch4 -p1 -b .597fix
-%patch5 -p1 -b .mochiweb-max
-%patch6 -p1 -b .replication-fixes
-%patch7 -p1 -b .attbackoff
-%patch8 -p1 -b .replicator-settings
-%patch9 -p1 -b .sync-logging
+rm -rf src/etap
+# Restore original timestamps to avoid reconfiguring
 touch -r configure.ac.initenabled configure.ac
 touch -r configure.fix_lib_path configure
 
@@ -146,7 +152,6 @@ fi
 %dir %{_sysconfdir}/couchdb/default.d
 %config(noreplace) %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/default.ini
 %config(noreplace) %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/local.ini
-#%config(noreplace) %{_sysconfdir}/default/couchdb
 %config(noreplace) %{_sysconfdir}/sysconfig/couchdb
 %config(noreplace) %{_sysconfdir}/logrotate.d/couchdb
 %{_initrddir}/couchdb
@@ -159,12 +164,36 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Thu Jun 24 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-4
+- backport versioned replication id patch, fixes co-hosted couches
+
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-3
+- `basename $0` to get $prog in init (symlink to run multiple couches)
+
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-2
+- login shell clears environment, instead explicitly cd during init
+
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-1
+- Mostly sync up with upstream EPEL changes
+
+* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-2
+- init script uses login shell, fixes permissions for config loading
+
 * Thu Jun 17 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-1
 - Append COUCHDB-793 patch to replication-fixes, fixes hanging reps
 - cleanup and fixes to init script
 
 * Tue Jun  8 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-3-1
 - Revert to using daemon. Sync up with upstream rpm.
+
+* Tue Jun  1 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-8
+- Suppress unneeded message while stopping CouchDB via init-script
+
+* Mon May 31 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-7
+- Do not manually remove pid-file while stopping CouchDB
+
+* Mon May 31 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-6
+- Fix 'stop' and 'status' targets in the init-script (see rhbz #591026)
 
 * Fri May 28 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-1-5
 - Update replication fixes patch to bail on checkpoint conflict

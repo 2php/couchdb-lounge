@@ -23,9 +23,9 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-exec="/usr/bin/couchdb"
-prog="couchdb"
-config="/etc/sysconfig/couchdb"
+prog=couchdb
+exec=/usr/bin/$prog
+basename=`basename $0`
 
 # default values
 COUCHDB_USER=couchdb
@@ -34,16 +34,16 @@ COUCHDB_STDERR_FILE=/dev/null
 COUCHDB_RESPAWN_TIMEOUT=0
 COUCHDB_OPTIONS=
 
-[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+[ -e /etc/sysconfig/$basename ] && . /etc/sysconfig/$basename
 
-pidfile=/var/run/couchdb/couchdb.pid
-lockfile=/var/lock/subsys/couchdb
+pidfile=/var/run/$prog/$basename.pid
+lockfile=/var/lock/subsys/$basename
 
 start() {
     [ -x $exec ] || exit 5
-    [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     rh_status_q && echo -n "already running" && warning && echo && exit 0
+    cd $(eval echo ~$COUCHDB_USER)
     su $COUCHDB_USER -c "$exec \
       -r $COUCHDB_RESPAWN_TIMEOUT \
       -o $COUCHDB_STDOUT_FILE \
@@ -58,11 +58,14 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
+    retval=0
     if ! rh_status_q ; then
-        echo -n "already stopped" && warning && echo && return 0
+        echo -n "already stopped" && warning
+    else
+        cd $(eval echo ~$COUCHDB_USER)
+        su $COUCHDB_USER -c "$exec -d -p $pidfile"
+        retval=$?
     fi
-    su $COUCHDB_USER -c "$exec -d"
-    retval=$?
     echo
     if [ $retval -eq 0 ]; then
         STOPTIMEOUT=60
@@ -90,13 +93,9 @@ reload() {
     restart
 }
 
-force_reload() {
-    restart
-}
-
 rh_status() {
     # run checks to determine if the service is running or use generic status
-    status $prog
+    status -p $pidfile $prog
 }
 
 rh_status_q() {
@@ -111,15 +110,12 @@ case "$1" in
     stop)
         $1
         ;;
-    restart)
-        $1
+    restart|force-reload)
+        restart
         ;;
     reload)
         rh_status_q || exit 7
         $1
-        ;;
-    force-reload)
-        force_reload
         ;;
     status)
         rh_status

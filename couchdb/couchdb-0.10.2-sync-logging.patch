@@ -59,12 +59,16 @@ index 5a45c20..5c8a5e5 100644
  
  debug_on() ->
      get_level_integer() =< ?LEVEL_DEBUG.
-@@ -72,29 +81,31 @@ get_level() ->
+@@ -72,29 +81,35 @@ get_level() ->
      level_atom(get_level_integer()).
  
  get_level_integer() ->
 -    catch gen_event:call(error_logger, couch_log, get_level_integer).
-+    ets:lookup_element(?MODULE, level, 2).
++    try
++        ets:lookup_element(?MODULE, level, 2)
++    catch error:badarg ->
++        ?LEVEL_ERROR
++    end.
  
  set_level_integer(Int) ->
      gen_event:call(error_logger, couch_log, {set_level_integer, Int}).
@@ -102,7 +106,7 @@ index 5a45c20..5c8a5e5 100644
  when LogLevel =< ?LEVEL_TMI ->
      % log every remaining event if tmi!
      log(Fd, Pid, tmi, "~p", [Event]),
-@@ -102,10 +113,9 @@ when LogLevel =< ?LEVEL_TMI ->
+@@ -102,10 +117,9 @@ when LogLevel =< ?LEVEL_TMI ->
  handle_event(_Event, State) ->
      {ok, State}.
  
@@ -116,7 +120,7 @@ index 5a45c20..5c8a5e5 100644
  
  handle_info(_Info, State) ->
      {ok, State}.
-@@ -113,7 +123,7 @@ handle_info(_Info, State) ->
+@@ -113,7 +127,7 @@ handle_info(_Info, State) ->
  code_change(_OldVsn, State, _Extra) ->
      {ok, State}.
  
