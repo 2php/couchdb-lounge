@@ -23,7 +23,7 @@ install:
 	python setup.py install $(root)
 
 rpm:
-	python setup.py bdist_rpm --release="$(RELEASE)" $(PY_EXTRA)
+	python setup.py bdist_rpm --release="$(RELEASE)" --requires "httplib2" $(PY_EXTRA)
 
 .PHONY: test
 test:

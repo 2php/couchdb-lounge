@@ -14,9 +14,9 @@
 
 import cjson
 import copy
+import httplib2
 import logging
 import os
-import pycurl
 import random
 import StringIO
 import urllib
@@ -70,6 +70,8 @@ class LoungeError(Exception):
 			return NotFound(code, key)
 		elif code==409:
 			return RevisionConflict(code, key)
+		elif code==408:
+			return RequestTimeout(code, key)
 		return cls(code, key)
 
 class NotFound(LoungeError):
@@ -82,6 +84,10 @@ class AlreadyExists(LoungeError):
 
 class RevisionConflict(LoungeError):
 	"""Exception for updating a record with an out-of-date revision."""
+	pass
+
+class RequestTimeout(LoungeError):
+	"""Exception for when a request times out"""
 	pass
 
 class ValidationFailed(Exception):
@@ -163,60 +169,24 @@ class Resource(object):
 	def _request(self, method, url, args=None, body=None):
 		"""Make a REST request."""
 
-		# set up debuggin
-		def dbg(dtyp, dmsg):
-			# curl's debug messages add extra newlines
-			logging.debug(dmsg.strip())
-		curl = pycurl.Curl()
-		if db_timeout is not None:
-			curl.setopt(pycurl.TIMEOUT, db_timeout)
-		curl.setopt(pycurl.VERBOSE, 1)
-		curl.setopt(pycurl.DEBUGFUNCTION, dbg)
+		handle = httplib2.Http(timeout=db_timeout)
+
+		# Errors come back as status code rather than raising exceptions
+		handle.force_exception_to_status_code = True
 
 		if args is not None:
-			url += '?' + urllib.urlencode(args)
-		curl.setopt(pycurl.URL, str(url))
+			uri = url + '?' + urllib.urlencode(args)
+		else:
+			uri = url
 
-		# disable signals for timeouts for thread safety
-		curl.setopt(pycurl.NOSIGNAL, 1)
-
-		# capture the result in a buffer
-		outbuf = StringIO.StringIO()
-		curl.setopt(pycurl.WRITEFUNCTION, outbuf.write)
-
-		# POST/PUT body
+		headers = None
 		if body is not None:
 			content_type, body = self._encode(body)
-			curl.setopt(pycurl.HTTPHEADER, ['Content-Type: ' + content_type])
-			if method=='POST':
-				# CURL handles POST differently.  We must set POSTFIELDS
-				curl.setopt(pycurl.POSTFIELDS, body)
-			else:
-				inbuf = StringIO.StringIO(body)
-				curl.setopt(pycurl.INFILESIZE, len(body))
-				curl.setopt(pycurl.READFUNCTION, inbuf.read)
+			headers = {'Content-Type': content_type }
+		
+		response, content = handle.request(uri, method=method, headers=headers, body=body)
 
-		if method=='PUT':
-			curl.setopt(pycurl.UPLOAD, 1)
-		elif method=='POST':
-			curl.setopt(pycurl.POST, 1)
-		elif method=='DELETE':
-			curl.setopt(pycurl.CUSTOMREQUEST, 'DELETE')
-
-		headers = {}
-		def add_header(ln):
-			stripped = ln.strip()
-			if stripped and stripped.find(': ') >= 0:
-				key,val = stripped.split(": ")
-				# From http://bugs.python.org/issue2275
-				key = '-'.join((ck.capitalize() for ck in key.split('-')))
-				headers[key] = val
-
-		curl.setopt(pycurl.HEADERFUNCTION, add_header)
-
-		curl.perform()
-		rv = outbuf.getvalue()
-		self._responsecode = curl.getinfo(pycurl.HTTP_CODE)
+		self._responsecode = int(response.get('status', 0))
 
 		# if nginx has a bad request, it will return a 400-like error page
 		# without setting the correct header.
@@ -225,7 +195,9 @@ class Resource(object):
 
 		if self._responsecode>=400:
 			raise LoungeError.make(self._responsecode, self._key)
-		return self._decode(rv, headers)
+
+		content_type = response.get('content-type', 'application/octet-stream')
+		return self._decode(content, content_type)
 	
 	### basic REST operations
 	def get(self, args=None):
@@ -646,8 +618,7 @@ class Attachment(Resource):
 			data = payload['stream'].read()
 		return content_type, data
 	
-	def _decode(self, data, headers):
-		content_type = headers.get('Content-Type', 'application/octet-stream')
+	def _decode(self, data, content_type='application/octet-stream'):
 		return {
 			"content_type": content_type,
 			"stream": StringIO.StringIO(data)
