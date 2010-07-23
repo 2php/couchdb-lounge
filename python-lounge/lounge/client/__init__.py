@@ -18,6 +18,7 @@ import httplib2
 import logging
 import os
 import random
+import socket
 import StringIO
 import urllib
 
@@ -53,26 +54,32 @@ def use_config(cfg, testing=False):
 use_config('prod')
 
 class LoungeError(Exception):
-	def __init__(self, code, key=''):
+	def __init__(self, code, key='', reason=None):
 		self.key = key
 		self.code = code
+		self.reason = reason
 
 	def __str__(self):
-		return "Resource %s returned %d" % (self.key, self.code)
-		
+		s = "Resource %s returned %d" % (self.key, self.code)
+		if self.reason:
+			s += " (%s)" % self.reason
+		return s
+	
 	def __repr__(self):
-		return "%s(%d, %s)" % (self.__class__.__name__, self.code, self.key)
+		return "%s(%d, %s, %s)" % (self.__class__.__name__, self.code, self.key, self.reason)
 
 	@classmethod
-	def make(cls, code, key=''):
+	def make(cls, code, key='', reason=None):
 		"""Make an exception from an HTTP error code."""
-		if code==404:
-			return NotFound(code, key)
-		elif code==409:
-			return RevisionConflict(code, key)
-		elif code==408:
-			return RequestTimeout(code, key)
-		return cls(code, key)
+		if code == 404:
+			return NotFound(code, key, reason)
+		elif code == 408:
+			return RequestTimedOut(code, key, reason)
+		elif code == 409:
+			return RevisionConflict(code, key, reason)
+		elif code == 408:
+			return RequestTimeout(code, key, reason)
+		return cls(code, key, reason)
 
 class NotFound(LoungeError):
 	"""Exception for when you read or update a missing record."""
@@ -86,7 +93,10 @@ class RevisionConflict(LoungeError):
 	"""Exception for updating a record with an out-of-date revision."""
 	pass
 
-class RequestTimeout(LoungeError):
+class SocketError(LoungeError):
+	"""Exception for when we have an error on the socket"""
+	
+class RequestTimedOut(LoungeError):
 	"""Exception for when a request times out"""
 	pass
 
@@ -171,9 +181,6 @@ class Resource(object):
 
 		handle = httplib2.Http(timeout=db_timeout)
 
-		# Errors come back as status code rather than raising exceptions
-		handle.force_exception_to_status_code = True
-
 		if args is not None:
 			uri = url + '?' + urllib.urlencode(args)
 		else:
@@ -182,19 +189,34 @@ class Resource(object):
 		headers = None
 		if body is not None:
 			content_type, body = self._encode(body)
-			headers = {'Content-Type': content_type }
-		
-		response, content = handle.request(uri, method=method, headers=headers, body=body)
+			headers = {'Content-Type': content_type}
 
-		self._responsecode = int(response.get('status', 0))
+		reason = None
+		try:
+			response, content = handle.request(uri, method=method, headers=headers, body=body)
+			self._responsecode = int(response.get('status', 0))
+
+		except socket.timeout, e:
+			self._responsecode = 408
+			raise RequestTimedOut(self._responsecode, self._key)
+
+		except Exception, e:
+			self._responsecode = 400
+
+			if isinstance(e, socket.error):
+				raise SocketError(self._responsecode, self._key, e.args[1])
+			elif isinstance(e, httplib2.HttpLib2Error):
+				reason = "HTTPLib2Error: %s" % str(e)
+			else:
+				reason = "Exception: %s" % str(e)
 
 		# if nginx has a bad request, it will return a 400-like error page
 		# without setting the correct header.
-		if self._responsecode==0:
+		if self._responsecode == 0:
 			self._responsecode = 400
 
-		if self._responsecode>=400:
-			raise LoungeError.make(self._responsecode, self._key)
+		if self._responsecode >= 400:
+			raise LoungeError.make(self._responsecode, self._key, reason)
 
 		content_type = response.get('content-type', 'application/octet-stream')
 		return self._decode(content, content_type)
