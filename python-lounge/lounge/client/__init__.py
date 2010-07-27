@@ -23,6 +23,7 @@ import StringIO
 import urllib
 
 from cjson import DecodeError
+from UserDict import DictMixin
 
 db_config = {
 	'prod': 'http://lounge:6984/',
@@ -104,7 +105,7 @@ class ValidationFailed(Exception):
 	"""Exception for when an object fails validation."""
 	pass
 
-class Resource(object):
+class Resource(object, DictMixin):
 	"""A generic REST resource.
 	
 	You can override url() and make_key() to specify how to
@@ -222,14 +223,14 @@ class Resource(object):
 		return self._decode(content, content_type)
 	
 	### basic REST operations
-	def get(self, args=None):
+	def _get(self, args=None):
 		return self._request('GET', self.url(), args=args)
 	
-	def put(self, args=None):
+	def _put(self, args=None):
 		result = self._request('PUT', self.url(), body=self._rec, args=args)
 		return result
 	
-	def delete(self, args=None):
+	def _delete(self, args=None):
 		return self._request('DELETE', self.url(), args=args)
 
 	@classmethod
@@ -269,7 +270,7 @@ class Resource(object):
 		"""
 		inst = cls()
 		inst._key = cls.make_key(*key)
-		inst._rec = inst.get()
+		inst._rec = inst._get()
 
 		return inst
 
@@ -286,7 +287,7 @@ class Resource(object):
 		args = None
 		if batchok:
 			args = {"batch": "ok"}
-		result = self.put(args)
+		result = self._put(args)
 		if result.get("ok",False):
 			if "id" in result:
 				self._rec["_id"] = result["id"]
@@ -295,14 +296,14 @@ class Resource(object):
 	
 	def reload(self):
 		"""Update a record from the database."""
-		self._rec = self.get()
+		self._rec = self._get()
 	
 	def destroy(self):
 		"""Remove a record from the database."""
 		rev = None
 		if '_rev' in self._rec:
 			rev = {'rev': self._rec['_rev']}
-		response = self.delete(rev)
+		response = self._delete(rev)
 
 	def update(self, args):
 		"""Update the element in the record w/ the elements in args"""
@@ -480,10 +481,10 @@ class Changes(Resource):
 		cls._since = since
 		return "_changes"
 
-	def get(self):
+	def _get(self):
 		args = {}
 		if self._since: args = {'since': self._since}
-		return Resource.get(self, args)
+		return Resource._get(self, args)
 
 	@classmethod
 	def find(cls, dbname, since=None):
@@ -646,7 +647,7 @@ class Attachment(Resource):
 			"stream": StringIO.StringIO(data)
 		}
 
-	def put(self, args=None):
+	def _put(self, args=None):
 		if args is None:
 			args = {}
 		args["rev"] = self._rec["_rev"]

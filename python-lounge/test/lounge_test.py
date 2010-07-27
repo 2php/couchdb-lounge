@@ -647,6 +647,16 @@ class LoungeTestCase(TestCase):
 		a.z = ['abc', 'abcc']
 		assert a.validate()
 
+	def testDictMethods(self):
+		class CoolDoc(Document): pass
+		a = CoolDoc.new()
+		a['one'] = 5
+		assert(a.get('one',10) == 5)
+		assert(a.get('two',10) == 10)
+		a['two'] = 5
+		assert(a.get('two',10) == 5)
+
+
 if __name__=="__main__":
 	# log all REST calls if the DEBUG env var is set
 	if os.environ.get("DEBUG",False):
