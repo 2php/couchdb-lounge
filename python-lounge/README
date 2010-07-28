@@ -1,3 +1,5 @@
+Altered behavior of set_path so that exceptions will be triggered instead of replacing scalar data with a new collection, even if that scalar is None
+#1.3.20 07/28/2010
 Added the 'keys' method to complete the dictionary interface
 #1.3.19 07/28/2010
 Documents now have super-handy get_path/set_path methods that allow you to find/change things deep in the heirarchy, regardless of what already exists.

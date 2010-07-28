@@ -667,8 +667,13 @@ class LoungeTestCase(TestCase):
 		assert(a['one']['two']['three'] == 'four')
 		assert(a['one']['five']['six'] == 'seven')
 		assert(a.get_path('one.five.six') == 'seven')
-		
 
+		# Shouldn't clobber non-dictionaries while traversing
+		a['two'] = {'none':None, 'string':'string', 'integer':5}
+		self.assertRaises(Exception, a.set_path, 'two.none.something', 'something')
+		self.assertRaises(Exception, a.set_path, 'two.string.something', 'something')
+		self.assertRaises(Exception, a.set_path, 'two.integer.something', 'something')
+		a.set_path('two.nonexistant.something','something')
 
 if __name__=="__main__":
 	# log all REST calls if the DEBUG env var is set

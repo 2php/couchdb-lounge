@@ -66,10 +66,11 @@ def set_path(it, selector, value):
 	args = selector.split('.')
 	last_arg = args.pop(-1)
 	for arg in args:
-		child = it.get(arg, None)
-		if not hasattr(child, 'get'):
+		try:
+			it = it[arg]
+		except KeyError, e:
 			it[arg] = {}
-		it = it[arg]
+			it = it[arg]
 	it[last_arg] = value
 	return value
 
