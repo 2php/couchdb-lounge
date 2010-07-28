@@ -1,3 +1,7 @@
+Documents now have super-handy get_path/set_path methods that allow you to find/change things deep in the heirarchy, regardless of what already exists.
+#1.3.18 07/27/2010
+Documents now have standard python dictionary methods
+#1.3.17 07/27/2010
 lounge python module
 nice interface to lounge configuration
 #1.3.16 07/23/2010

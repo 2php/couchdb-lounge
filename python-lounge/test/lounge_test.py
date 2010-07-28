@@ -656,6 +656,19 @@ class LoungeTestCase(TestCase):
 		a['two'] = 5
 		assert(a.get('two',10) == 5)
 
+	def testPathMethods(self):
+		class CoolDoc(Document): pass
+		a = CoolDoc.new()
+		a['one'] = {'two':{'three':'four'}}
+		assert(a.get_path('one.two.three') == 'four')
+		assert(a.get_path('one.two.three.four') == None)
+		assert(a.get_path('two') == None)
+		a.set_path('one.five.six','seven')
+		assert(a['one']['two']['three'] == 'four')
+		assert(a['one']['five']['six'] == 'seven')
+		assert(a.get_path('one.five.six') == 'seven')
+		
+
 
 if __name__=="__main__":
 	# log all REST calls if the DEBUG env var is set

@@ -51,6 +51,28 @@ def use_config(cfg, testing=False):
 	else:
 		db_prefix = ''
 
+def get_path(it, selector):
+	"""Finds a value deep within a collection of collections, hopefully without throwing any KeyErrors along the way.
+	NOTE: Assumes no lists are involved.  Please patch to account for these."""
+	args = selector.split('.')
+	for arg in args:
+		if not hasattr(it, 'get'):
+			return None
+		it = it.get(arg, None)
+	return it
+
+def set_path(it, selector, value):
+	"""Like get_path, but sets a value instead."""
+	args = selector.split('.')
+	last_arg = args.pop(-1)
+	for arg in args:
+		child = it.get(arg, None)
+		if not hasattr(child, 'get'):
+			it[arg] = {}
+		it = it[arg]
+	it[last_arg] = value
+	return value
+
 # default to production config
 use_config('prod')
 
@@ -308,6 +330,12 @@ class Resource(object, DictMixin):
 	def update(self, args):
 		"""Update the element in the record w/ the elements in args"""
 		self._rec.update(args)
+
+	def get_path(self, selector):
+		return get_path(self._rec, selector)
+
+	def set_path(self, selector, value):
+		return set_path(self._rec, selector, value)
 
 	def __contains__(self, arg):
 		return arg in self._rec
