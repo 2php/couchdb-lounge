@@ -337,6 +337,9 @@ class Resource(object, DictMixin):
 	def set_path(self, selector, value):
 		return set_path(self._rec, selector, value)
 
+	def keys(self):
+		return self._rec.keys()
+
 	def __contains__(self, arg):
 		return arg in self._rec
 
@@ -518,7 +521,7 @@ class Changes(Resource):
 	def find(cls, dbname, since=None):
 		inst = cls()
 		inst._key = cls.make_key(dbname, since)
-		inst._rec = inst.get()
+		inst._rec = inst._get()
 
 		return inst
 	
