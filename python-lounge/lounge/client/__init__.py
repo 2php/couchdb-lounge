@@ -476,7 +476,7 @@ class Changes(Resource):
 
 	@classmethod
 	def make_key(cls, dbname, since=None):
-		cls._db_name = dbname
+		cls._db_name = db_prefix + dbname
 		cls._since = since
 		return "_changes"
 

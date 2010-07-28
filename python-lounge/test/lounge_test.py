@@ -45,7 +45,7 @@ class LoungeTestCase(TestCase):
 	def testConnectionRefused(self):
 		""" Test that we properly throw an error when the connection is refused. """
 		old_dbconnectinfo = client.db_connectinfo
-		client.db_connectinfo = "http://somecrap:98765/"
+		client.db_connectinfo = "http://localhost:98765/"
 		self.assertRaises(client.SocketError, TestDoc.create, "hellothere")
 		client.db_connectinfo = old_dbconnectinfo
 		
@@ -646,6 +646,16 @@ class LoungeTestCase(TestCase):
 
 		a.z = ['abc', 'abcc']
 		assert a.validate()
+	
+	def testChanges(self):
+		a = TestDoc.create("a", x=1, y=1)
+		b = TestDoc.create("b", x=2, y=4)
+		c = TestDoc.create("c", x=3, y=9)
+		d = TestDoc.create("d", x=4, y=16)
+
+		result = Changes.find("pytest")
+		changed_doc_ids = [row["id"] for row in result.results]
+		self.assertEqual(sorted(changed_doc_ids), ["a","b","c","d"])
 
 if __name__=="__main__":
 	# log all REST calls if the DEBUG env var is set
