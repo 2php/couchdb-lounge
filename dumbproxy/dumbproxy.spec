@@ -1,11 +1,12 @@
 Summary: Lounge Dumb Proxy
-Name: lounge-dumbproxy
-Version: 1.2.1
-Release: 0%{?dist}
+Name: lounge-dumbproxy-transitional
+Version: 2.0
+Release: 1%{?dist}
 URL: http://tilgovi.github.com/couchdb-lounge
 License: None
 Group: Lounge
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+Conflicts: lounge-dumbproxy < 2.0
 
 %description
 A modified version of NGINX that handles sharding and failover of a couch cluster.
