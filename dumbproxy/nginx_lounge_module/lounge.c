@@ -24,6 +24,8 @@ limitations under the License.
 
 #define FAILED_NODE_MAX_RETRY 60 * 10
 
+#define SHARD_SIZE(n_shards) ((2LL << 31) / n_shards)
+
 enum {
 	LOUNGE_PROXY_HOST_INDEX = 0,
 	LOUNGE_PROXY_PORT_INDEX
@@ -61,6 +63,7 @@ typedef struct {
 
 typedef struct {
 	ngx_int_t                    num_shards;
+	uint32_t                     *shard_range_table;
 	ngx_str_t                    json_filename;
 	lounge_peer_t                *couch_nodes;
 	ngx_uint_t                   num_couch_nodes;
@@ -238,7 +241,7 @@ lounge_handler(ngx_http_request_t *r)
 	lounge_main_conf_t *lmcf;
     lounge_loc_conf_t  *rlcf;
 	lounge_req_ctx_t   *ctx;
-	int                 shard_id, n;
+	int                 shard_id, n, i;
 	char                db[buffer_size], 
 	                    key[buffer_size], 
 	                    extra[buffer_size];
@@ -297,17 +300,27 @@ lounge_handler(ngx_http_request_t *r)
 	}
 
 	/* allocate some space for the new uri */
-	size_t new_uri_len = r->unparsed_uri.len + 5;  /* this gives room for up to 5 digits to mark the shard id */
+	size_t new_uri_len = r->unparsed_uri.len + 30;  /* this gives room for the db name prefix of "shards/XXXXXXXX-XXXXXXX/" with url-encoded slashes (%2f)  */
 	r->uri.data = ngx_pcalloc(r->pool, new_uri_len);
 	if (!r->uri.data) {
 		return NGX_ERROR;
 	}
 
 	/* hash the key to figure out which db shard it lives on */
-	ngx_uint_t crc32 = (ngx_crc32_short((u_char *)key, 
-				strlen(key)) >> 16) & 0x7fff;
-	shard_id = crc32 % lmcf->num_shards;
+	uint32_t crc32 = ngx_crc32_short((u_char *)key, strlen(key));
+
+	for (shard_id = 0, i = 0; i < lmcf->num_shards; i++) {
+		if(crc32 >= lmcf->shard_range_table[i]) {
+			shard_id = i;
+		}
+	}
 	ctx->shard_id = shard_id;
+
+	uint32_t range_low = lmcf->shard_range_table[shard_id];
+	uint32_t range_high = range_low + (SHARD_SIZE(lmcf->num_shards) - 1);
+	if (shard_id == lmcf->num_shards - 1) {
+		range_high = UINT32_MAX;
+	}
 
 	u_char* unparsed_key;
 	u_char* unparsed_uri_end = r->unparsed_uri.data + r->unparsed_uri.len;
@@ -321,8 +334,7 @@ lounge_handler(ngx_http_request_t *r)
 
 	int unparsed_key_len = unparsed_key_end - unparsed_key;
 
-	r->uri.len = snprintf((char*)r->uri.data, 
-			new_uri_len, "/%s%d/%.*s", db, shard_id, unparsed_key_len, unparsed_key);
+	r->uri.len = snprintf((char*)r->uri.data, new_uri_len, "/shards%%2f%08x-%08x%%2f%s/%.*s", range_low, range_high, db, unparsed_key_len, unparsed_key);
 
 	if (r->uri.len >= new_uri_len) {
 		return NGX_ERROR;
@@ -541,6 +553,8 @@ lounge_proxy_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 	lounge_main_conf_t *conf;
 	struct json_object *lounge_proxy_conf;
 	u_char *json_filename;
+	uint32_t *shard_range_table;
+	int i;
 
 	conf = ngx_http_conf_get_module_main_conf(cf, lounge_module);
 	
@@ -564,7 +578,19 @@ lounge_proxy_init(ngx_conf_t *cf, ngx_http_upstream_srv_conf_t *us)
 
 	json_object_put(lounge_proxy_conf);
 
-    us->peer.data = conf->couch_nodes;
+	/* calculate the start of each hashed key range
+	 *
+	 * for now this is a function of the number of shards
+	 * future configurations may let these key ranges be made explicit
+	 * to allow for non-uniform splitting of the key space
+	 */
+	shard_range_table = ngx_pcalloc(cf->pool, sizeof(uint32_t) * conf->num_shards);
+	for (i = 0; i < conf->num_shards; i++) {
+		shard_range_table[i] = i * SHARD_SIZE(conf->num_shards);
+	}
+	conf->shard_range_table = shard_range_table;
+
+	us->peer.data = conf->couch_nodes;
 
 	/* Callback for request initialization */
     us->peer.init = lounge_proxy_init_peer;

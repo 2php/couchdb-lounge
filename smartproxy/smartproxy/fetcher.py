@@ -348,10 +348,13 @@ class AllDbFetcher(HttpFetcher):
 		self._config = config
 	
 	def _onsuccess(self, page, *args, **kwargs):
-		# in is a list like ["test71", "test22", "funstuff102", ...]
-		# out is a list like ["test", "funstuff", ...]
+		# in is a list of shards
+		# out is a list of db names
 		shards = cjson.decode(page)
-		dbs = dict([(self._config.get_db_from_shard(shard), 1) for shard in shards])
+		dbs = dict([
+			(urllib.unquote(self._config.get_db_from_shard(
+				urllib.quote(shard, ''))), 1)
+			for shard in shards])
 		if 'factory' in kwargs and 'request' in kwargs:
 			kwargs['request'].headers.update(kwargs['factory'].response_headers)
 			# remove length, send chunked response

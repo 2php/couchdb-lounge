@@ -48,7 +48,14 @@ from lrucache import LRUCache
 
 def lounge_hash(x):
 	crc = zlib.crc32(x,0)
-	return (crc >> 16)&0x7fff
+	# forward compatibility with python 2.6
+	# zlib.crc32 returns a signed integer on 32bit python and python 2.6
+	if crc < 0:
+		return 0x100000000 + crc
+	return crc
+
+def which_shard(x, n_shards):
+	return min(n_shards - 1, x/(0x100000000 / n_shards))
 
 def normalize_header(h):
 	return '-'.join([word.capitalize() for word in h.split('-')])
@@ -513,7 +520,7 @@ class SmartproxyResource(resource.Resource):
 		body = get_body(request, {})
 		if 'keys' in body:
 			for key in body['keys']:
-				where = lounge_hash(key)%numShards
+				where = which_shard(lounge_hash(key), nShards)
 				shardContent[where].append(key)
 
 		for i,shard in enumerate(shards):
@@ -644,7 +651,7 @@ class SmartproxyResource(resource.Resource):
 		if 'docs' in body:
 			for doc in body['docs']:
 				doc_id = doc['_id']
-				where = lounge_hash(doc_id) % numShards
+				where = which_shard(lounge_hash(doc_id), numShards)
 				shardContent[where].append(doc)
 
 		for i,shard in enumerate(shards):
@@ -818,12 +825,12 @@ class SmartproxyResource(resource.Resource):
 					# create the upstream descriptions by mapping over the replica list
 					itertools.imap(lambda r:
 						       (r,    # upstream identifier
-							"http://%s:%s/%s%d" #url
-							% (nodes[r][0], nodes[r][1], db_name, s),
+							"http://%s:%s/%s" #url
+							% (nodes[r][0], nodes[r][1], s),
 							[],   # factory args
 							{}),  # factor kwargs
 						       rl)),
-					xrange(len(self.conf_data.shardmap)),
+					self.conf_data.shards(db_name),
 					self.conf_data.shardmap),
 			fireOnOneErrback=1,
 			consumeErrors=1).addCallbacks(finish_request, handle_error)

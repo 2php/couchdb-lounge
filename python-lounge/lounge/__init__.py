@@ -6,7 +6,8 @@ class ShardMap(object):
 		if fname is None:
 			fname = "/etc/lounge/shards.conf"
 		self.load_config(fname)
-		self.get_db_shard = re.compile(r'^(.*\D)(\d+)$')
+		self.get_db_shard = re.compile(
+				r'^shards%2[fF]([\da-fA-F]{8})-([\da-fA-F]{8})%2[fF](.+)$')
 	
 	def load_config(self, fname):
 		self.config = cjson.decode(file(fname).read())
@@ -15,25 +16,32 @@ class ShardMap(object):
 	
 	def get_db_from_shard(self, shard):
 		"""Strip out the shard index from a shard name.
-		Ex: in -- userinfo41
+		Ex: in -- shards/XXXXXXXX-XXXXXXXX/userinfo
 		   out -- userinfo
 		"""
-		return self.get_db_shard.sub(r'\1', shard)
+		return self.get_db_shard.sub(r'\3', shard)
 
 	def get_index_from_shard(self, shard):
-		"""Strip out the db name from a shard name.
-		Ex: in -- userinfo41
-		   out -- 41 
+		"""Figure out the shard index from key range
+		This assumes <# of shards> equal sized key slices
+		Future configurations may allow non-uniform ranges
 		"""
-		return int(self.get_db_shard.sub(r'\2', shard))
+		low_key = int(self.get_db_shard.sub(r'\1', shard), 16)
+		return low_key / int(0x100000000 / len(self.shardmap))
 	
 	def shards(self, dbname):
-		return ["%s%d" % (dbname, i) for i in range(len(self.shardmap))]
+		shard_size = 0x100000000 / len(self.shardmap)
+		ranges = [[s,s+shard_size-1]
+							for s in range(0, 0x100000001 - shard_size, shard_size)]
+		ranges[-1][1] = 0xffffffff
+			
+		return ["shards%%2f%08x-%08x%%2f%s" % (tuple(ranges[i]) + (dbname,))
+						for i in range(len(self.shardmap))]
 	
 	def nodes(self, shard=None):
 		"""Return a list of nodes holding a particular shard.
-		Ex: in -- userinfo41
-		   out -- [http://bfp6:5984/userinfo41, http://bfp7:5984/userinfo41, http://bfp9:5984/userinfo41]
+		Ex: in -- shards/XXXXXXXX-XXXXXXXX/userinfo
+		   out -- [http://bfp6:5984/shards%2fXXXXXXXX-XXXXXXXX%2fuserinfo, http://bfp7:5984/shards...userinfo, http://bfp9:5984/shards...userinfo]
 
 		If shard is not given, return the node list with no db name.
 		Ex:
@@ -43,7 +51,7 @@ class ShardMap(object):
 			return [str("http://%s:%d/" % (host, port)) for host, port in self.nodelist]
 		else:
 			dbname = self.get_db_from_shard(shard)
-			shard_index = int(shard.strip(dbname))
+			shard_index = self.get_index_from_shard(shard)
 			# unicode will mess up stuff like curl, so we convert to plain str
 			return [str("http://%s:%d/%s" % (host,port,shard)) for host, port in [self.nodelist[i] for i in self.shardmap[shard_index]]]
 	
@@ -51,12 +59,13 @@ class ShardMap(object):
 		"""Return the complete URL of each primary shard for a given database.
 
 		Ex: in -- userinfo
-		   out -- [http://server1:5984/userinfo1, http://server2:5984/userinfo2, http://server1:5984/userinfo3 ..]
+		   out -- [http://server1:5984/shards%2f00000000-XXXXXXXX%2fuserinfo, http://server2:5984/shards...userinfo, http://server1:5984/shards....userinfo, ...]
 		"""
 		rv = []
+		shards = self.shards(dbname)
 		for shard_index,shard_nodes in enumerate(self.shardmap):
 			host,port = self.nodelist[shard_nodes[0]]
-			rv.append(str("http://%s:%d/%s%d" % (host,port,dbname,shard_index)))
+			rv.append(str("http://%s:%d/%s" % (host,port,shards[shard_index])))
 		return rv
 			
 # vi: noexpandtab ts=2 sw=2
