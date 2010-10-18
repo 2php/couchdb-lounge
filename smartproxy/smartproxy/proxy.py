@@ -667,7 +667,7 @@ class SmartproxyResource(resource.Resource):
 		for i,shard in enumerate(shards):
 			nodes = self.conf_data.nodes(shard)
 			urls = [self._rewrite_url("/".join([node, rest])) + qs for node in nodes]
-			shardBody = cjson.encode(dict(docs=shardContent[i]))
+			shardBody = cjson.encode(dict(body.items(), docs=shardContent[i]))
 
 			fetcher = MapResultFetcher(shard, urls, reducer, deferred, self.client_queue, body=shardBody)
 			fetcher.fetch(request)
