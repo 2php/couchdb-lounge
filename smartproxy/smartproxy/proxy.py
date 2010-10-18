@@ -674,6 +674,49 @@ class SmartproxyResource(resource.Resource):
 
 		return server.NOT_DONE_YET
 
+	def do_missing_revs(self, request):
+		def finish_missing_revs(results):
+			def combine_results(acc, shard_result):
+				# DeferredList packs success as (True, result)
+				shard_result = shard_result[1]
+				# getPageFromAny packs result as (result, identifier, factory)
+				shard_result, node_idx, factory = shard_result
+				acc.update(cjson.decode(shard_result)['missing_revs'])
+				return acc
+			all_results = reduce(combine_results, results, dict())
+			output = {'missing_revs': all_results}
+			log.msg(cjson.encode(output) + '\n')
+			request.write(cjson.encode(output) + '\n')
+			request.finish()
+
+		database, rest = request.path[1:].split('/', 1)
+		shards = self.conf_data.shards(database)
+
+		#sort the docs into shard buckets by hashing the keys
+		numShards = len(shards)
+		shardContent = [{} for x in shards]
+		body = get_body(request, {})
+		for doc_id in body:
+			where = which_shard(lounge_hash(doc_id), numShards)
+			shardContent[where][doc_id] = body[doc_id]
+
+		deferred = defer.DeferredList(
+			[getPageFromAny([
+				(shard_idx,
+				 self._rewrite_url("/".join([node, rest])),
+				 [],
+				 { 'method': 'POST',
+				   'postdata': cjson.encode(shardContent[shard_idx])})
+				for node in self.conf_data.nodes(shard)])
+			 for shard_idx, shard in enumerate(shards)],
+			fireOnOneErrback=1,
+			fireOnOneCallback=0,
+			consumeErrors=1)
+		deferred.addCallback(finish_missing_revs)
+		deferred.addErrback(make_errback(request))
+		
+		return server.NOT_DONE_YET
+
 	def render_POST(self, request):
 		"""Create all the shards for a database."""
 		db, rest = request.uri[1:], None
@@ -696,6 +739,9 @@ class SmartproxyResource(resource.Resource):
 
 		if request.uri.endswith("/_bulk_docs") or ("/_bulk_docs?" in request.uri):
 			return self.do_bulk_docs(request)
+
+		if request.uri.endswith("/_missing_revs"):
+			return self.do_missing_revs(request)
 
 		# PUT /db/_somethingspecial
 		if re.match(r'/[^/]+/_.*', request.uri):
