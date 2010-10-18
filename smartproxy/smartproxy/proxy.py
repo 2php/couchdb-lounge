@@ -445,7 +445,7 @@ class SmartproxyResource(resource.Resource):
 				if continuous:
 					reason, shard_id = results # packed by deferred list
 					reason, ch_idx = reason # packed by deferred list
-					reason, factory, rep_id = reason # packed by getPageFromAll
+					reason, rep_id, factory = reason # packed by getPageFromAll
 					if heartbeat:
 						heartbeat.stop()
 					# stop the remaining channels
