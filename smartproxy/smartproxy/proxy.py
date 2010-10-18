@@ -144,9 +144,19 @@ def make_success_callback(request):
 
 def make_errback(request):
 	def handle_error(reason):
+		# First unpack any nested Failures from DeferredList
+		try:
+			while True:
+				reason.trap(defer.FirstError)
+				reason = reason.value.subFailure
+		except:
+			pass
+
+		# Then check the reason and return a response
 		if reason.check(error.Error):
 			if hasattr(reason.value, 'message'):
-				request.setResponseCode(int(reason.value.status), reason.value.message)
+				request.setResponseCode(int(reason.value.status),
+										reason.value.message)
 			else:
 				request.setResponseCode(int(reason.value.status))
 			if hasattr(reason.value, 'response') and reason.value.response:
@@ -797,23 +807,6 @@ class SmartproxyResource(resource.Resource):
 			output['purge_seq'] = changes.encode_seq(output['purge_seq'])
 			request.write(cjson.encode(output) + '\n')
 			request.finish()
-
-		# error callback
-		def handle_error(reason):
-			reason = reason.value.subFailure # unpack FirstError from DeferredList
-			# Nest try because python 2.4 doesn't fully support try-except-finally
-			try:
-				try:
-					reason.trap(error.Error) # trap http error from subrequest
-					request.setResponseCode(int(reason.value.status))
-					request.write(reason.value.response)
-				except:
-					# if we get back some non-http response type error, we should
-					# return 500
-					request.setResponseCode(http.INTERNAL_SERVER_ERROR)
-					reason.raiseException()
-			finally:
-				request.finish()
 		
 		# construct a DeferredList of the deferred sub-requests
 		# fetches shard results from any replica of each shard
@@ -833,7 +826,9 @@ class SmartproxyResource(resource.Resource):
 					self.conf_data.shards(db_name),
 					self.conf_data.shardmap),
 			fireOnOneErrback=1,
-			consumeErrors=1).addCallbacks(finish_request, handle_error)
+			consumeErrors=1)
+		deferred.addCallback(finish_request)
+		deferred.addErrback(make_errback(request))
 
 		return server.NOT_DONE_YET
 
