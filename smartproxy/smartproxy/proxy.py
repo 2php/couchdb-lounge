@@ -680,7 +680,7 @@ class SmartproxyResource(resource.Resource):
 				# DeferredList packs success as (True, result)
 				shard_result = shard_result[1]
 				# getPageFromAny packs result as (result, identifier, factory)
-				shard_result, node_idx, factory = shard_result
+				shard_result, shard_idx, factory = shard_result
 				acc.update(cjson.decode(shard_result)['missing_revs'])
 				return acc
 			all_results = reduce(combine_results, results, dict())
@@ -703,11 +703,11 @@ class SmartproxyResource(resource.Resource):
 		deferred = defer.DeferredList(
 			[getPageFromAny([
 				(shard_idx,
-				 self._rewrite_url("/".join([node, rest])),
+				 "/".join([shard_uri, rest]),
 				 [],
 				 { 'method': 'POST',
 				   'postdata': cjson.encode(shardContent[shard_idx])})
-				for node in self.conf_data.nodes(shard)])
+				for shard_uri in self.conf_data.nodes(shard)])
 			 for shard_idx, shard in enumerate(shards)],
 			fireOnOneErrback=1,
 			fireOnOneCallback=0,
