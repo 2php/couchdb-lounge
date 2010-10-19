@@ -717,6 +717,56 @@ class SmartproxyResource(resource.Resource):
 		
 		return server.NOT_DONE_YET
 
+	def do_ensure_full_commit(self, request):
+		"""
+		TODO: We should pass the instance_start_time back
+		CouchDB uses this to ensure that the target database
+		didn't crash between checkpoints during replication.
+
+		In our case, we strip it from here and the /db info
+		response. This causes replication to see undefined
+		in both cases, which always matches.
+
+		This is safe so long as the shard configuration does
+		not change and we use delayed_commits=false or a
+		battery-backed cache on every node.
+
+		The more general solution is to request all available
+		information by contacting all replicas of all shards
+		and forcing replication to retry from the last checkpoint
+		any time the instance_start_time vector does not match.
+
+		However, we don't want to do this until we feel confident
+		that we can store checkpoints in a redundant way. This means
+		opening up the read repain can of worms or making smartproxy
+		a real replication middle-man with its own database for
+		storing and replicating cluster-wide checkpoint logs.
+		"""
+		def finish_request(results):
+			request.setResponseCode(201)
+			request.setHeader('Content-Length', 12)
+			request.write('{"ok":true}\n')
+			request.finish()
+
+		database, rest = request.path[1:].split('/', 1)
+		shards = self.conf_data.shards(database)
+
+		deferred = defer.DeferredList(
+			[getPageFromAny([
+				(shard_idx,
+				 '/'.join([shard_uri, rest]),
+				 [],
+				 { 'method': 'POST' })
+				for shard_uri in self.conf_data.nodes(shard)])
+			 for shard_idx, shard in enumerate(shards)],
+			fireOnOneErrback=1,
+			fireOnOneCallback=0,
+			consumeErrors=1)
+		deferred.addCallback(finish_request)
+		deferred.addErrback(make_errback(request))
+
+		return server.NOT_DONE_YET
+
 	def render_POST(self, request):
 		"""Create all the shards for a database."""
 		db, rest = request.uri[1:], None
@@ -735,7 +785,7 @@ class SmartproxyResource(resource.Resource):
 
 		# POST /db/_ensure_full_commit
 		if request.uri.endswith("/_ensure_full_commit"):
-			return self.do_db_op(request)
+			return self.do_ensure_full_commit(request)
 
 		if request.uri.endswith("/_bulk_docs") or ("/_bulk_docs?" in request.uri):
 			return self.do_bulk_docs(request)
@@ -794,7 +844,7 @@ class SmartproxyResource(resource.Resource):
 			rest = None
 
 		# make sure it's an operation we support
-		if rest not in [None, '_ensure_full_commit']:
+		if rest is not None:
 			request.setResponseCode(500)
 			return cjson.encode({"error": "smartproxy got a " + request.method + " to " + request.uri + ". don't know how to handle it"})+"\n"
 
