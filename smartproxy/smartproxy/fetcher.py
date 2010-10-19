@@ -78,7 +78,7 @@ def getPageFromAll(upstreams, factory=client.HTTPClientFactory,
 						       factory,
 						       context_factory,
 						       *args, **kwargs)
-		subfactory.deferred.addBoth(lambda x: (x, identifier, subfactory))
+		subfactory.deferred.addCallback(lambda x: (x, identifier, subfactory))
 		return subfactory.deferred
 
 	return map(makeUpstreamGetter, upstreams)
