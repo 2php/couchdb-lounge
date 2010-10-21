@@ -47,11 +47,12 @@ import reducer
 from lrucache import LRUCache
 
 def lounge_hash(x):
-	crc = zlib.crc32(x,0)
-	# forward compatibility with python 2.6
-	# zlib.crc32 returns a signed integer on 32bit python and python 2.6
-	if crc < 0:
-		return 0x100000000 + crc
+	# encode the doc_id as utf8 since this is how dumbproxy gets it
+	# urls with unicode characters turn into %-escaped unicode pairs
+	
+	# the & 0xffffffff guarantees we get the same result regardless
+	# of the sign since this behavior changed between python versions
+	crc = zlib.crc32(x.encode('utf8'), 0) & 0xffffffff
 	return crc
 
 def which_shard(x, n_shards):
