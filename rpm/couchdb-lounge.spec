@@ -1,6 +1,6 @@
 Name:		couchdb-lounge-transitional
 Version: 	2.0
-Release:	2%{?dist}
+Release:	3%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
 License: 	Apache
@@ -31,5 +31,5 @@ cp %{_builddir}/lounge.ini %{buildroot}/etc/couchdb/default.d/lounge.ini
 /etc/init.d/dumbproxy restart
 
 %files
-%config/etc/couchdb/default.d/lounge.ini
+/etc/couchdb/default.d/lounge.ini
 
