@@ -49,7 +49,7 @@ typedef struct {
 typedef struct {
 	ngx_uint_t           shard_id;	
 	ngx_uint_t           current_host_id;
-    ngx_uint_t           try_i;
+	ngx_uint_t           try_i;
 	lounge_peer_t        **addrs;
 	ngx_uint_t           num_peers;
 } lounge_proxy_peer_data_t;
@@ -239,15 +239,15 @@ lounge_handler(ngx_http_request_t *r)
 {
 	const size_t        buffer_size = 1024;
 	lounge_main_conf_t *lmcf;
-    lounge_loc_conf_t  *rlcf;
+	lounge_loc_conf_t  *rlcf;
 	lounge_req_ctx_t   *ctx;
 	int                 shard_id, n, i;
 	char                db[buffer_size], 
 	                    key[buffer_size], 
 	                    extra[buffer_size];
 	u_char             *uri,
-					   *uri_last,
-					   *orig_uri_last;
+                     *uri_last,
+                     *orig_uri_last;
 	int                 uri_len;
 
     rlcf = ngx_http_get_module_loc_conf(r, lounge_module);
