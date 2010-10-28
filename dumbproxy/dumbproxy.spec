@@ -28,7 +28,7 @@ SBIN="--sbin-path=/usr/bin/nginx-lounge"
 CONF="--conf-path=/etc/lounge/nginx/nginx.conf"
 ACCESS_LOG="--http-log-path=/var/log/lounge/nginx/access.log"
 ERROR_LOG="--error-log-path=/var/log/lounge/nginx/error.log"
-PID="--pid-path=/var/run/nginx-lounge.pid"
+PID="--pid-path=/var/run/lounge/nginx.pid"
 LOCK="--lock-path=/var/lock/nginx-lounge.lock"
 ./configure $PREFIX $SBIN $CONF $ACCESS_LOG $ERROR_LOG $PID $LOCK $MODULES $CFLAGS $LIBS
 if [ $? -ne 0 ]; then

@@ -9,7 +9,7 @@ SBIN="--sbin-path=/usr/bin/nginx-lounge"
 CONF="--conf-path=/etc/lounge/nginx/nginx.conf"
 ACCESS_LOG="--http-log-path=/var/log/lounge/nginx-access.log"
 ERROR_LOG="--error-log-path=/var/log/lounge/nginx-error.log"
-PID="--pid-path=/var/run/pid/nginx-lounge.pid"
+PID="--pid-path=/var/run/lounge/nginx.pid"
 LOCK="--lock-path=/var/lock/nginx-lounge.lock"
 
 JSON_CFLAGS=`pkg-config --cflags json`
