@@ -1,6 +1,6 @@
 Name:		couchdb-lounge-transitional
 Version: 	2.0
-Release:	3%{?dist}
+Release:	4%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
 License: 	Apache

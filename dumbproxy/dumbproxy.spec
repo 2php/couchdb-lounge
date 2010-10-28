@@ -1,7 +1,7 @@
 Summary: Lounge Dumb Proxy
 Name: lounge-dumbproxy-transitional
 Version: 2.0
-Release: 1%{?dist}
+Release: 3%{?dist}
 URL: http://tilgovi.github.com/couchdb-lounge
 License: None
 Group: Lounge
@@ -52,6 +52,7 @@ echo `pwd`
 
 install -d $RPM_BUILD_ROOT/etc/lounge/nginx
 install -d $RPM_BUILD_ROOT/etc/init.d
+install -d $RPM_BUILD_ROOT/var/run/lounge
 install -m644 conf/nginx.conf  $RPM_BUILD_ROOT/etc/lounge/nginx/nginx.conf
 install -m644 conf/shards.conf $RPM_BUILD_ROOT/etc/lounge/shards.conf
 install -m755 init.d/dumbproxy $RPM_BUILD_ROOT/etc/init.d/dumbproxy
@@ -65,5 +66,6 @@ rm -Rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/lounge/nginx/nginx.conf
 %config(noreplace) /etc/lounge/shards.conf
 /var/log/lounge/nginx/
+/var/run/lounge
 /usr/bin/nginx-lounge
 /etc/init.d/dumbproxy
