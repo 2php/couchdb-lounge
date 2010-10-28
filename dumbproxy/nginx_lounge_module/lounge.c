@@ -32,7 +32,12 @@ enum {
 };
 
 typedef struct {
-	ngx_flag_t 						enabled;
+	ngx_array_t   *codes;            /* uintptr_t */
+
+	ngx_uint_t    captures;
+	ngx_uint_t    stack_size;
+
+	ngx_flag_t    log;
 } lounge_loc_conf_t;
 
 typedef struct {
@@ -72,6 +77,7 @@ typedef struct {
 
 static void *lounge_create_loc_conf(ngx_conf_t *cf);
 static char *lounge_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child);
+static char *lounge_shard_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t lounge_init(ngx_conf_t *cf);
 static char *lounge(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 static ngx_int_t ngx_http_upstream_init_couch_proxy_peer(ngx_http_request_t *r, ngx_http_upstream_srv_conf_t *us);
@@ -103,10 +109,18 @@ static ngx_command_t lounge_commands[] = {
 		NULL },
 
 	{ 	ngx_string("lounge-shard-rewrite"),
-		NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
+		NGX_HTTP_LOC_CONF | NGX_HTTP_SRV_CONF | NGX_CONF_TAKE2,
+		lounge_shard_rewrite,
+		NGX_HTTP_LOC_CONF_OFFSET,
+		0,
+		NULL },
+
+	{   ngx_string("rewrite_log"),
+		 NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_SIF_CONF|NGX_HTTP_LOC_CONF
+                        |NGX_HTTP_LIF_CONF|NGX_CONF_FLAG,
 		ngx_conf_set_flag_slot,
 		NGX_HTTP_LOC_CONF_OFFSET,
-		offsetof(lounge_loc_conf_t, enabled),
+		offsetof(lounge_loc_conf_t, log),
 		NULL },
 
 	ngx_null_command
@@ -249,11 +263,12 @@ lounge_handler(ngx_http_request_t *r)
                      *uri_last,
                      *orig_uri_last;
 	int                 uri_len;
+	ngx_str_t           request_uri = ngx_string("request_uri");
+	ngx_int_t           request_uri_key;
+	ngx_str_t          *rewritten_uri;
 
-    rlcf = ngx_http_get_module_loc_conf(r, lounge_module);
-	if (!rlcf->enabled) {
-		return NGX_DECLINED;
-	}
+	ngx_http_script_code_pt code;
+	ngx_http_script_engine_t *e;
 
 	ctx = ngx_http_get_module_ctx(r, lounge_module);
 	if (!ctx) {
@@ -265,13 +280,64 @@ lounge_handler(ngx_http_request_t *r)
 	/* we've already seen this request and rewritten the uri */
 	if (ctx->uri_sharded) return NGX_DECLINED;
 
+
+	/* execute the rewrite regex */
+	rlcf = ngx_http_get_module_loc_conf(r, lounge_module);
+	if (rlcf->codes == NULL) {
+		return NGX_DECLINED;
+	}
+
+	e = ngx_pcalloc(r->pool, sizeof(ngx_http_script_engine_t));
+	if (e == NULL) {
+		return NGX_HTTP_INTERNAL_SERVER_ERROR;
+	}
+
+	e->sp = ngx_pcalloc(r->pool,
+	                    rlcf->stack_size * sizeof(ngx_http_variable_value_t));
+	if (e->sp == NULL) {
+		return NGX_HTTP_INTERNAL_SERVER_ERROR;
+	}
+
+	request_uri_key = ngx_hash_key(request_uri.data,
+	                               request_uri.len);
+
+	*e->sp++ = *ngx_http_get_variable(r, &request_uri,
+	                                 request_uri_key,
+	                                 NGX_HTTP_VAR_INDEXED);
+
+	if (rlcf->captures) {
+		e->captures = ngx_pcalloc(r->pool, rlcf->captures * sizeof(int));
+		if (e->captures == NULL) {
+			return NGX_HTTP_INTERNAL_SERVER_ERROR;
+		}
+	} else {
+		e->captures = NULL;
+	}
+
+	e->ip = rlcf->codes->elts;
+	e->request = r;
+	e->quote = 1;
+	e->log = rlcf->log;
+	e->status = NGX_DECLINED;
+
+	while (*(uintptr_t *) e->ip) {
+		code = *(ngx_http_script_code_pt *) e->ip;
+		code(e);
+	}
+
+	if (e->buf.len) {
+		rewritten_uri = &e->buf;
+	} else {
+		rewritten_uri = &r->unparsed_uri;
+	}
+
 	/* allocate enough room for a null-termed uri */
-	uri = ngx_palloc(r->pool, r->unparsed_uri.len+1);
+	uri = ngx_palloc(r->pool, rewritten_uri->len+1);
 
 	/* unescape everything except for slashes */
 	uri_last = uri;
-	orig_uri_last = r->unparsed_uri.data;
-	normalize_uri(&uri_last, &orig_uri_last, r->unparsed_uri.len);
+	orig_uri_last = rewritten_uri->data;
+	normalize_uri(&uri_last, &orig_uri_last, rewritten_uri->len);
 	
 	/* null term so we can use sscanf */
 	*uri_last = '\0';
@@ -300,7 +366,7 @@ lounge_handler(ngx_http_request_t *r)
 	}
 
 	/* allocate some space for the new uri */
-	size_t new_uri_len = r->unparsed_uri.len + 30;  /* this gives room for the db name prefix of "shards/XXXXXXXX-XXXXXXX/" with url-encoded slashes (%2f)  */
+	size_t new_uri_len = uri_len + 30;  /* this gives room for the db name prefix of "shards/XXXXXXXX-XXXXXXX/" with url-encoded slashes (%2f)  */
 	r->uri.data = ngx_pcalloc(r->pool, new_uri_len);
 	if (!r->uri.data) {
 		return NGX_ERROR;
@@ -371,7 +437,9 @@ lounge_create_loc_conf(ngx_conf_t *cf)
         return NGX_CONF_ERROR;
     }
 
-	conf->enabled = NGX_CONF_UNSET;
+    conf->stack_size = NGX_CONF_UNSET_UINT;
+    conf->log = NGX_CONF_UNSET;
+
     return conf;
 }
 
@@ -382,10 +450,158 @@ lounge_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     lounge_loc_conf_t *prev = parent;
     lounge_loc_conf_t *conf = child;
 
-	ngx_conf_merge_value(conf->enabled, prev->enabled, 0);
+    uintptr_t *code;
+
+    ngx_conf_merge_value(conf->log, prev->log, 0);
+    ngx_conf_merge_uint_value(conf->stack_size, prev->stack_size, 10);
+
+    if (conf->codes == NULL) {
+	    return NGX_CONF_OK;
+    }
+
+    if (conf->codes == prev->codes) {
+	    return NGX_CONF_OK;
+    }
+
+    code = ngx_array_push_n(conf->codes, sizeof(uintptr_t));
+    if (code == NULL) {
+	    return NGX_CONF_ERROR;
+    }
+
+    *code = (uintptr_t) NULL;
+
     return NGX_CONF_OK;
 }
 
+static char *
+lounge_shard_rewrite(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    lounge_loc_conf_t  *lcf = conf;
+
+    ngx_int_t                           n;
+    ngx_str_t                           *value, err;
+    ngx_http_script_code_pt             *code;
+    ngx_http_script_compile_t           sc;
+    ngx_http_script_regex_code_t        *regex;
+    ngx_http_script_regex_end_code_t    *regex_end;
+    u_char                              errstr[NGX_MAX_CONF_ERRSTR];
+
+    regex = ngx_http_script_start_code(cf->pool, &lcf->codes,
+                                       sizeof(ngx_http_script_regex_code_t));
+    if (regex == NULL) {
+	    return NGX_CONF_ERROR;
+    }
+
+    ngx_memzero(regex, sizeof(ngx_http_script_regex_code_t));
+
+    value = cf->args->elts;
+
+    err.len = NGX_MAX_CONF_ERRSTR;
+    err.data = errstr;
+
+    regex->regex = ngx_regex_compile(&value[1], 0, cf->pool, &err);
+
+    if (regex->regex == NULL) {
+	    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "%s", err.data);
+	    return NGX_CONF_ERROR;
+    }
+
+    regex->code = ngx_http_script_regex_start_code;
+    /*regex->uri = 1; Don't parse the uri. We'll use a variable. */
+    regex->name = value[1];
+
+    if (value[2].data[value[2].len - 1] == '?') {
+
+	    /* the last "?" drops the original arguments */
+	    value[2].len--;
+
+    } else {
+	    regex->add_args = 1;
+    }
+
+    regex->status = NGX_OK;
+    regex->redirect = 1; /* rewrite Location headers, etc */
+
+    ngx_memzero(&sc, sizeof(ngx_http_script_compile_t));
+
+    sc.cf = cf;
+    sc.source = &value[2];
+    sc.lengths = &regex->lengths;
+    sc.values = &lcf->codes;
+    sc.variables = ngx_http_script_variables_count(&value[2]);
+    sc.main = regex;
+    sc.complete_lengths = 1;
+    sc.compile_args = !regex->redirect;
+
+    if (ngx_http_script_compile(&sc) != NGX_OK) {
+	    return NGX_CONF_ERROR;
+    }
+
+    regex = sc.main;
+
+    regex->ncaptures = sc.ncaptures;
+    regex->size = sc.size;
+    regex->args = sc.args;
+
+    if (sc.variables == 0 && !sc.dup_capture) {
+	    regex->lengths = NULL;
+    }
+
+    n = ngx_regex_capture_count(regex->regex);
+
+    if (n < 0) {
+	    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+	                       ngx_regex_capture_count_n " failed for "
+	                       "pattern \"%V\"", &value[1]);
+	    return NGX_CONF_ERROR;
+    }
+
+    if (regex->ncaptures > (ngx_uint_t) n) {
+	    ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
+	                       "pattern \"%V\" has less captures "
+	                       "than referrenced in substitution \"%v\"",
+	                       &value[1], &value[2]);
+	    return NGX_CONF_ERROR;
+    }
+
+    if (regex->ncaptures < (ngx_uint_t) n) {
+	    regex->ncaptures = (ngx_uint_t) n;
+    }
+
+    if (regex->ncaptures) {
+	    regex->ncaptures = (regex->ncaptures + 1) * 3;
+
+	    if (lcf->captures < regex->ncaptures) {
+		    lcf->captures = regex->ncaptures;
+	    }
+    }
+
+    regex_end = ngx_http_script_add_code(lcf->codes,
+                                         sizeof(ngx_http_script_regex_end_code_t),
+                                         &regex);
+
+    if (regex_end == NULL) {
+	    return NGX_CONF_ERROR;
+    }
+
+    regex_end->code = ngx_http_script_regex_end_code;
+    regex_end->uri = regex->uri;
+    regex_end->args = regex->args;
+    regex_end->add_args = regex->add_args;
+    regex_end->redirect = regex->redirect;
+
+    code = ngx_http_script_add_code(lcf->codes, sizeof(uintptr_t), &regex);
+    if (code == NULL) {
+	    return NGX_CONF_ERROR;
+    }
+
+    *code = (uintptr_t) NULL;
+
+    regex->next = (u_char *) lcf->codes->elts + lcf->codes->nelts
+                                              - (u_char *) regex;
+
+    return NGX_CONF_OK;
+}
 
 static ngx_int_t
 lounge_init(ngx_conf_t *cf)
