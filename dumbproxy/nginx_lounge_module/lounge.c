@@ -260,8 +260,10 @@ lounge_handler(ngx_http_request_t *r)
 	                    key[buffer_size], 
 	                    extra[buffer_size];
 	u_char             *uri,
-                     *uri_last,
-                     *orig_uri_last;
+					   *uri_last,
+                       *orig_uri_last,
+                       *unescaped_key,
+                       *unescaped_key_end;
 	int                 uri_len;
 	ngx_str_t           request_uri = ngx_string("request_uri");
 	ngx_int_t           request_uri_key;
@@ -341,7 +343,7 @@ lounge_handler(ngx_http_request_t *r)
 	
 	/* null term so we can use sscanf */
 	*uri_last = '\0';
-	uri_len = uri_last - uri;
+	uri_len = rewritten_uri->len;
 
 	lmcf = ngx_http_get_module_main_conf(r, lounge_module);
 
@@ -372,8 +374,30 @@ lounge_handler(ngx_http_request_t *r)
 		return NGX_ERROR;
 	}
 
+	u_char* unparsed_key;
+	u_char* unparsed_uri_end = r->unparsed_uri.data + r->unparsed_uri.len;
+	unparsed_key = ngx_strlchr(r->unparsed_uri.data+1, unparsed_uri_end, '/');
+	if (!unparsed_key) return NGX_ERROR;
+	unparsed_key++;
+	if (unparsed_key >= unparsed_uri_end) return NGX_ERROR;
+
+	u_char *qs_start = ngx_strlchr(unparsed_key, unparsed_uri_end, '?');
+	u_char *unparsed_key_end = qs_start ? qs_start : unparsed_uri_end;
+
+	int unparsed_key_len = unparsed_key_end - unparsed_key;
+
 	/* hash the key to figure out which db shard it lives on */
-	uint32_t crc32 = ngx_crc32_short((u_char *)key, strlen(key));
+	unescaped_key = ngx_pcalloc(r->pool, strlen(key) + 1);
+	if (!unescaped_key) {
+		return NGX_ERROR;
+	}
+	unescaped_key_end = unescaped_key;
+	ngx_cpystrn((u_char *)key, unparsed_key, unparsed_key_len + 1);
+	ngx_unescape_uri(&unescaped_key_end, &unparsed_key,
+	                 unparsed_key_end - unparsed_key,
+	                 NGX_UNESCAPE_URI);
+	uint32_t crc32 = ngx_crc32_short(unescaped_key, 
+	                                 unescaped_key_end - unescaped_key);
 
 	for (shard_id = 0, i = 0; i < lmcf->num_shards; i++) {
 		if(crc32 >= lmcf->shard_range_table[i]) {
@@ -388,19 +412,7 @@ lounge_handler(ngx_http_request_t *r)
 		range_high = UINT32_MAX;
 	}
 
-	u_char* unparsed_key;
-	u_char* unparsed_uri_end = r->unparsed_uri.data + r->unparsed_uri.len;
-	unparsed_key = ngx_strlchr(r->unparsed_uri.data+1, unparsed_uri_end, '/');
-	if (!unparsed_key) return NGX_ERROR;
-	unparsed_key++;
-	if (unparsed_key >= unparsed_uri_end) return NGX_ERROR;
-
-	u_char *qs_start = ngx_strlchr(unparsed_key, unparsed_uri_end, '?');
-	u_char *unparsed_key_end = qs_start ? qs_start : unparsed_uri_end;
-
-	int unparsed_key_len = unparsed_key_end - unparsed_key;
-
-	r->uri.len = snprintf((char*)r->uri.data, new_uri_len, "/shards%%2f%08x-%08x%%2f%s/%.*s", range_low, range_high, db, unparsed_key_len, unparsed_key);
+	r->uri.len = snprintf((char*)r->uri.data, new_uri_len, "/shards%%2f%08x-%08x%%2f%s/%s", range_low, range_high, db, key);
 
 	if (r->uri.len >= new_uri_len) {
 		return NGX_ERROR;
