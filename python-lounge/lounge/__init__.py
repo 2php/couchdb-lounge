@@ -13,6 +13,7 @@ class ShardMap(object):
 		self.config = cjson.decode(file(fname).read())
 		self.shardmap = self.config["shard_map"]
 		self.nodelist = self.config["nodes"]
+		self.dupsets = self.config.get("dup_shards", [])
 	
 	def get_db_from_shard(self, shard):
 		"""Strip out the shard index from a shard name.
@@ -34,9 +35,15 @@ class ShardMap(object):
 		ranges = [[s,s+shard_size-1]
 							for s in range(0, 0x100000001 - shard_size, shard_size)]
 		ranges[-1][1] = 0xffffffff
-			
+
+		unique_shards = list(reduce(
+			lambda acc, dup: acc.difference(dup[1:]),
+			self.dupsets,
+			set(range(len(self.shardmap)))))
+		unique_shards.sort()
+
 		return ["shards%%2f%08x-%08x%%2f%s" % (tuple(ranges[i]) + (dbname,))
-						for i in range(len(self.shardmap))]
+						for i in unique_shards]
 	
 	def nodes(self, shard=None):
 		"""Return a list of nodes holding a particular shard.
