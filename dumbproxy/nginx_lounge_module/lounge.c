@@ -244,7 +244,9 @@ lounge_handler(ngx_http_request_t *r)
 	                    extra[buffer_size];
 	u_char             *uri,
 					   *uri_last,
-					   *orig_uri_last;
+                       *orig_uri_last,
+                       *unescaped_key,
+                       *unescaped_key_end;
 	int                 uri_len;
 
     rlcf = ngx_http_get_module_loc_conf(r, lounge_module);
@@ -303,12 +305,6 @@ lounge_handler(ngx_http_request_t *r)
 		return NGX_ERROR;
 	}
 
-	/* hash the key to figure out which db shard it lives on */
-	ngx_uint_t crc32 = (ngx_crc32_short((u_char *)key, 
-				strlen(key)) >> 16) & 0x7fff;
-	shard_id = crc32 % lmcf->num_shards;
-	ctx->shard_id = shard_id;
-
 	u_char* unparsed_key;
 	u_char* unparsed_uri_end = r->unparsed_uri.data + r->unparsed_uri.len;
 	unparsed_key = ngx_strlchr(r->unparsed_uri.data+1, unparsed_uri_end, '/');
@@ -321,8 +317,23 @@ lounge_handler(ngx_http_request_t *r)
 
 	int unparsed_key_len = unparsed_key_end - unparsed_key;
 
+	/* hash the key to figure out which db shard it lives on */
+	unescaped_key = ngx_pcalloc(r->pool, strlen(key) + 1);
+	if (!unescaped_key) {
+		return NGX_ERROR;
+	}
+	unescaped_key_end = unescaped_key;
+	ngx_cpystrn((u_char *)key, unparsed_key, unparsed_key_len + 1);
+	ngx_unescape_uri(&unescaped_key_end, &unparsed_key,
+	                 unparsed_key_end - unparsed_key,
+	                 NGX_UNESCAPE_URI);
+	ngx_uint_t crc32 = (ngx_crc32_short(unescaped_key, 
+				unescaped_key_end - unescaped_key) >> 16) & 0x7fff;
+	shard_id = crc32 % lmcf->num_shards;
+	ctx->shard_id = shard_id;
+
 	r->uri.len = snprintf((char*)r->uri.data, 
-			new_uri_len, "/%s%d/%.*s", db, shard_id, unparsed_key_len, unparsed_key);
+			new_uri_len, "/%s%d/%s", db, shard_id, key);
 
 	if (r->uri.len >= new_uri_len) {
 		return NGX_ERROR;
