@@ -1,7 +1,7 @@
 Summary: Lounge Dumb Proxy
 Name: lounge-dumbproxy-transitional
 Version: 2.0
-Release: 3%{?dist}
+Release: 6%{?dist}
 URL: http://tilgovi.github.com/couchdb-lounge
 License: None
 Group: Lounge
