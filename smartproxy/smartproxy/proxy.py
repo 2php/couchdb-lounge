@@ -388,30 +388,32 @@ class SmartproxyResource(resource.Resource):
 
 	def render_changes(self, request):
 		database = request.path[1:].split('/', 1)[0]
-		shards = self.conf_data.shards(database)
-		rep_lists = self.conf_data.shardmap
+		shards = dict(map(lambda s:
+						  (self.conf_data.get_index_from_shard(s), s),
+						  self.conf_data.shards(database)))
 
 		feed = request.args.get('feed',['nofeed'])[-1]
 		continuous = (feed == 'continuous')
 
 		since = None
-		if 'since' in request.args:
+		if 'since' in request.args and request.args['since'][-1] != '0':
 			since = changes.decode_seq(request.args['since'][-1])
 			if True in itertools.imap(
-				lambda s, rl: str(s) not in since # missing shard
-				or False not in	itertools.imap(lambda r:
-					str(r) not in since[str(s)],
-					rl), # no recognized replicas
-				itertools.count(), rep_lists):
+				lambda s: str(s) not in since # missing shard
+				or True not in itertools.imap(lambda r:
+					str(r) in since[str(s)],
+					self.conf_data.shardmap[s]), # no recognized replicas
+				shards.iterkeys()):
 				request.setResponseCode(http.BAD_REQUEST)
-				request.write('{"error":"bad request",' +
-							  '"reason":' +
-							  '"missing shard or bad replicas in since"}')
+				return ('{"error":"bad request",'
+					    '"reason":'
+					    '"missing shard or bad replicas in since"}')
 			del request.args['since']
 		else:
-			since = dict(map(lambda n: (str(n),
-						    {str(self.conf_data.shardmap[n][0]): 0}),
-					 xrange(len(shards))))
+			since = dict(
+				map(lambda n: (str(n),
+							   {str(self.conf_data.shardmap[n][0]): 0}),
+					shards))
 
 		heartbeat = None
 		if 'heartbeat' in request.args and continuous:
@@ -874,8 +876,11 @@ class SmartproxyResource(resource.Resource):
 
 		# fold function to reduce the sharded results
 		def fold_results_fun(acc, result):
-			result, shard_idx = result             #packed by DeferredList
-			result, node_idx, factory = result     #packed by getPageFromAny
+			result, idx = result                   #packed by DeferredList
+			result, rep_id, factory = result       #packed by getPageFromAny
+			shard, rep_idx = rep_id
+			shard_idx = self.conf_data.get_index_from_shard(shard)
+			node_idx = self.conf_data.shardmap[shard_idx][rep_idx]
 			result = cjson.decode(result)
 			acc['doc_count'] += result['doc_count']
 			acc['doc_del_count'] += result['doc_del_count']
@@ -908,20 +913,18 @@ class SmartproxyResource(resource.Resource):
 		# construct a DeferredList of the deferred sub-requests
 		# fetches shard results from any replica of each shard
 		# if any shard fails completely the whole thing fails fast
-		nodes = self.conf_data.nodelist
 		deferred = defer.DeferredList(
 			# map over all the shards and get a deferred that handles fail-over
-			map(lambda s, rl: getPageFromAny(
-					# create the upstream descriptions by mapping over the replica list
-					itertools.imap(lambda r:
-						       (r,    # upstream identifier
-							"http://%s:%s/%s" #url
-							% (nodes[r][0], nodes[r][1], s),
-							[],   # factory args
-							{}),  # factor kwargs
-						       rl)),
-					self.conf_data.shards(db_name),
-					self.conf_data.shardmap),
+			map(lambda shard: getPageFromAny(
+				# create the upstream descriptions
+				itertools.imap(
+					lambda rep_idx, rep_uri:
+					((shard, rep_idx),    # upstream identifier
+					 rep_uri,             # url
+					 [],                  # factory args
+					 {}),                 # factor kwargs
+					*zip(*enumerate(self.conf_data.nodes(shard))))),
+				self.conf_data.shards(db_name)),
 			fireOnOneErrback=1,
 			consumeErrors=1)
 		deferred.addCallback(finish_request)
