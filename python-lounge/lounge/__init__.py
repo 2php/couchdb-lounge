@@ -42,13 +42,13 @@ class ShardMap(object):
 			set(range(len(self.shardmap)))))
 		unique_shards.sort()
 
-		return ["shards%%2f%08x-%08x%%2f%s" % (tuple(ranges[i]) + (dbname,))
+		return ["shards%%2F%08x-%08x%%2F%s" % (tuple(ranges[i]) + (dbname,))
 						for i in unique_shards]
 	
 	def nodes(self, shard=None):
 		"""Return a list of nodes holding a particular shard.
 		Ex: in -- shards/XXXXXXXX-XXXXXXXX/userinfo
-		   out -- [http://bfp6:5984/shards%2fXXXXXXXX-XXXXXXXX%2fuserinfo, http://bfp7:5984/shards...userinfo, http://bfp9:5984/shards...userinfo]
+		   out -- [http://bfp6:5984/shards%2FXXXXXXXX-XXXXXXXX%2Fuserinfo, http://bfp7:5984/shards...userinfo, http://bfp9:5984/shards...userinfo]
 
 		If shard is not given, return the node list with no db name.
 		Ex:
@@ -66,7 +66,7 @@ class ShardMap(object):
 		"""Return the complete URL of each primary shard for a given database.
 
 		Ex: in -- userinfo
-		   out -- [http://server1:5984/shards%2f00000000-XXXXXXXX%2fuserinfo, http://server2:5984/shards...userinfo, http://server1:5984/shards....userinfo, ...]
+		   out -- [http://server1:5984/shards%2F00000000-XXXXXXXX%2Fuserinfo, http://server2:5984/shards...userinfo, http://server1:5984/shards....userinfo, ...]
 		"""
 		rv = []
 		shards = self.shards(dbname)
