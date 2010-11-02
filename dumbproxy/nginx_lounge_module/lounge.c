@@ -137,100 +137,6 @@ ngx_module_t lounge_module = {
     NGX_MODULE_V1_PADDING
 };
 
-/* This is the code from ngx_unescape_uri, but modified so that it doesn't
- * unescape %2f and ensures that the 'f' is consistently lowercased.  This 
- * is needed so that document name portion of the uri can contain slashes
- * and still be hashed correctly.
- */
-static void
-normalize_uri(u_char **dst, u_char **src, size_t size)
-{
-    u_char  *d, *s, ch, c, decoded;
-    enum {
-        sw_usual = 0,
-        sw_quoted,
-        sw_quoted_second
-    } state;
-
-    d = *dst;
-    s = *src;
-
-    state = 0;
-    decoded = 0;
-
-    while (size--) {
-
-        ch = *s++;
-
-        switch (state) {
-        case sw_usual:
-            if (ch == '%') {
-                state = sw_quoted;
-                break;
-            }
-
-			if (ch == '?') goto done;
-
-            *d++ = ch;
-            break;
-
-        case sw_quoted:
-
-            if (ch >= '0' && ch <= '9') {
-                decoded = (u_char) (ch - '0');
-                state = sw_quoted_second;
-                break;
-            }
-
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
-                decoded = (u_char) (c - 'a' + 10);
-                state = sw_quoted_second;
-                break;
-            }
-
-            /* the invalid quoted character */
-
-            state = sw_usual;
-
-            *d++ = ch;
-
-            break;
-
-        case sw_quoted_second:
-
-            state = sw_usual;
-
-            if (ch >= '0' && ch <= '9') {
-                ch = (u_char) ((decoded << 4) + ch - '0');
-                *d++ = ch;
-                break;
-            }
-
-            c = (u_char) (ch | 0x20);
-            if (c >= 'a' && c <= 'f') {
-                ch = (u_char) ((decoded << 4) + c - 'a' + 10);
-
-				if (ch == '/') {
-                	*d++ = '%'; *d++ = '2'; *d++ = 'f';
-                	break;
-				}
-
-                *d++ = ch;
-                break;
-            }
-
-            /* the invalid quoted character */
-
-            break;
-        }
-    }
-done:
-    *dst = d;
-    *src = s;
-}
-
-
 static ngx_int_t
 lounge_handler(ngx_http_request_t *r)
 {
@@ -243,11 +149,8 @@ lounge_handler(ngx_http_request_t *r)
 	                    key[buffer_size], 
 	                    extra[buffer_size];
 	u_char             *uri,
-					   *uri_last,
-                       *orig_uri_last,
                        *unescaped_key,
                        *unescaped_key_end;
-	int                 uri_len;
 
     rlcf = ngx_http_get_module_loc_conf(r, lounge_module);
 	if (!rlcf->enabled) {
@@ -265,16 +168,11 @@ lounge_handler(ngx_http_request_t *r)
 	if (ctx->uri_sharded) return NGX_DECLINED;
 
 	/* allocate enough room for a null-termed uri */
-	uri = ngx_palloc(r->pool, r->unparsed_uri.len+1);
-
-	/* unescape everything except for slashes */
-	uri_last = uri;
-	orig_uri_last = r->unparsed_uri.data;
-	normalize_uri(&uri_last, &orig_uri_last, r->unparsed_uri.len);
+	uri = ngx_palloc(r->pool, r->unparsed_uri.len + 1);
 	
 	/* null term so we can use sscanf */
-	*uri_last = '\0';
-	uri_len = uri_last - uri;
+	ngx_cpystrn(uri, r->unparsed_uri.data, r->unparsed_uri.len + 1);
+	uri[r->unparsed_uri.len + 1] = '\0';
 
 	lmcf = ngx_http_get_module_main_conf(r, lounge_module);
 
@@ -287,7 +185,8 @@ lounge_handler(ngx_http_request_t *r)
 	 * e.g. 	/targeting/some_key
 	 *  		/targeting/some_key?vijay=hobbit
 	 */
-	n = sscanf((char*)uri, "/%1024[^/]/%1024[^?/]%1024[^\n]", db, key, extra);
+	*db = *key = *extra = '\0';
+	n = sscanf((char*)uri, "/%1024[^/]/%1024[^?/]%1024[^?\n]", db, key, extra);
 
 	ngx_log_debug2(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
 			"db: %s\nkey: %s\n", db, key);
@@ -305,35 +204,25 @@ lounge_handler(ngx_http_request_t *r)
 		return NGX_ERROR;
 	}
 
+	/* unescape the key and hash it */
 	u_char* unparsed_key;
-	u_char* unparsed_uri_end = r->unparsed_uri.data + r->unparsed_uri.len;
-	unparsed_key = ngx_strlchr(r->unparsed_uri.data+1, unparsed_uri_end, '/');
-	if (!unparsed_key) return NGX_ERROR;
-	unparsed_key++;
-	if (unparsed_key >= unparsed_uri_end) return NGX_ERROR;
-
-	u_char *qs_start = ngx_strlchr(unparsed_key, unparsed_uri_end, '?');
-	u_char *unparsed_key_end = qs_start ? qs_start : unparsed_uri_end;
-
-	int unparsed_key_len = unparsed_key_end - unparsed_key;
-
-	/* hash the key to figure out which db shard it lives on */
 	unescaped_key = ngx_pcalloc(r->pool, strlen(key) + 1);
 	if (!unescaped_key) {
 		return NGX_ERROR;
 	}
 	unescaped_key_end = unescaped_key;
-	ngx_cpystrn((u_char *)key, unparsed_key, unparsed_key_len + 1);
+	unparsed_key = (u_char *)key;
 	ngx_unescape_uri(&unescaped_key_end, &unparsed_key,
-	                 unparsed_key_end - unparsed_key,
+	                 ngx_strlen(unparsed_key),
 	                 NGX_UNESCAPE_URI);
 	ngx_uint_t crc32 = (ngx_crc32_short(unescaped_key, 
 				unescaped_key_end - unescaped_key) >> 16) & 0x7fff;
 	shard_id = crc32 % lmcf->num_shards;
 	ctx->shard_id = shard_id;
 
+	/* assemble the upstream uri */
 	r->uri.len = snprintf((char*)r->uri.data, 
-			new_uri_len, "/%s%d/%s", db, shard_id, key);
+	                      new_uri_len, "/%s%d/%s%s", db, shard_id, key, extra);
 
 	if (r->uri.len >= new_uri_len) {
 		return NGX_ERROR;
