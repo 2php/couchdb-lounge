@@ -101,8 +101,8 @@ class LoungeError(Exception):
 			return RequestTimedOut(code, key, reason)
 		elif code == 409:
 			return RevisionConflict(code, key, reason)
-		elif code == 408:
-			return RequestTimeout(code, key, reason)
+		elif code == 504:
+			return ProxyTimedOut(code, key, reason)
 		return cls(code, key, reason)
 
 class NotFound(LoungeError):
@@ -122,6 +122,10 @@ class SocketError(LoungeError):
 	
 class RequestTimedOut(LoungeError):
 	"""Exception for when a request times out"""
+	pass
+
+class ProxyTimedOut(LoungeError):
+	"""Exception for proxy timeouts"""
 	pass
 
 class ValidationFailed(Exception):
