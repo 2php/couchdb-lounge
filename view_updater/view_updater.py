@@ -17,6 +17,7 @@ from urllib import urlopen, urlencode
 import cjson
 import logging
 import time
+import signal
 import lounge
 from lounge.cronguard import CronGuard
 
@@ -26,12 +27,18 @@ else:
 	COUCH_URL = "http://localhost:5984/"
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
-LOG_LEVEL = logging.INFO
+LOG_LEVEL = logging.ERROR
 LOG_LOCATION = '/var/meebo/log/view_updater.log'
 
 DESIGN_DOCS_TO_SKIP = {
 		'analyze':1,
 }
+
+def handle_USR2(signum, frame):
+	if logging.getLogger().getEffectiveLevel() > logging.INFO:
+		logging.getLogger().setLevel(logging.INFO)
+	else:
+		logging.getLogger().setLevel(logging.ERROR)
 
 def get_all_dbs():
 	try:
@@ -104,6 +111,7 @@ if __name__ == "__main__":
 		logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 	else:
 		logging.basicConfig(level=LOG_LEVEL, filename=LOG_LOCATION, format=LOG_FORMAT)
+		signal.signal(signal.SIGUSR2, handle_USR2)
 	do_view_update = True
 
 	try:
