@@ -1,5 +1,5 @@
 #!/bin/sh
-VER="1.0"
+VER="1.1"
 FILES="view_updater.py view_updater.logrotate view_updater.cron view_updater.spec"
 
 topdir=`rpm --eval "%_topdir"`
