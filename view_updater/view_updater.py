@@ -19,6 +19,8 @@ import os
 import simplejson
 import time
 import signal
+import urllib
+
 import lounge
 from lounge.cronguard import CronGuard
 
@@ -119,6 +121,7 @@ if __name__ == "__main__":
 
 	if do_view_update:
 		for db in get_all_dbs():
+			db = urllib.quote_plus(db)
 			logging.info("starting database: %s" % db)
 			for design_doc in get_all_design_docs(db):
 				logging.info("starting design doc: %s" % design_doc)
