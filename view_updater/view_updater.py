@@ -94,7 +94,7 @@ def get_views(db, design_doc):
 
 
 def run_view(db, design_doc, view):
-	url = COUCH_URL + "%s/_design/%s/_view/%s" % (db, design_doc, view)
+	url = COUCH_URL + "%s/_design/%s/_view/%s?limit=1" % (db, design_doc, view)
 	try:
 		start_time = time.time()
 		x = urlopen(url).read()
@@ -132,4 +132,5 @@ if __name__ == "__main__":
 					end_time = time.time()
 					elapsed = end_time - start_time
 					logging.info("%s took %d seconds" % (view,elapsed))
+					break # you only need to do 1 view per doc
 		
