@@ -96,10 +96,7 @@ def get_views(db, design_doc):
 def run_view(db, design_doc, view):
 	url = COUCH_URL + "%s/_design/%s/_view/%s?limit=1" % (db, design_doc, view)
 	try:
-		start_time = time.time()
 		x = urlopen(url).read()
-		end_time = time.time()
-		logging.info ("%-80s took %d seconds" % (url, end_time - start_time))
 	except:
 		logging.exception("run_view(%s,%s,%s)" % (db, design_doc, view))
 
