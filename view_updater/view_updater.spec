@@ -1,12 +1,14 @@
 Summary: Finds all the views on a locally running instance of couchdb and retrieves them, forcing an index update
 Name: lounge-view-updater
-Version: 1.1
+Version: 1.3
 Release: 1%{?dist}
 URL: http://tilgovi.github.com/couchdb-lounge
 Group: Lounge/Utils
 License: None
 Source0: %{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+Requires: python-simplejson
+Requires: python-lounge
 
 %description
 Finds and retrieves all views on a local couchdb instance
