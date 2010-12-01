@@ -14,8 +14,9 @@
 #limitations under the License.
 
 from urllib import urlopen, urlencode
-import cjson
 import logging
+import os
+import simplejson
 import time
 import signal
 import lounge
@@ -46,23 +47,19 @@ def get_all_dbs():
 	except:
 		logging.error("Failed to retrieve the database list from the local couch node")
 		raise
-	db_json = cjson.decode(x)
+	db_json = simplejson.loads(x)
 	return db_json
 
 
 def get_all_design_docs(db):
 	url = COUCH_URL + "%s/_all_docs?" % db
-	#note about couch 0.9.0 collation:
-	#collation on documents is case insensitive and unpredictable.  For instance,
-	#the following query requires '_designZZZZZZ' instead of '_design/ZZZZZZ'.
-	#Evidently the slash throws off the collation.  Very strange...
 	url = url + urlencode( [ ("startkey", '"_design/"'), ("endkey", '"_designZZZZZZ"')])
 	try:
 		x = urlopen(url).read()
 	except IOError:
 		logging.exception("Failed trying to fetch %s" % url)
 		return []
-	design_doc_json = cjson.decode(x)
+	design_doc_json = simplejson.loads(x)
 	design_docs = []
 	if 'rows' not in design_doc_json:
 		logging.info ("No design docs in %s" % db)
@@ -86,7 +83,7 @@ def get_views(db, design_doc):
 	except IOError:
 		logging.exception("Failed trying to fetch %s" % url)
 		return []
-	design_doc_json = cjson.decode(x)
+	design_doc_json = simplejson.loads(x)
 	if "views" in design_doc_json:
 		return design_doc_json['views'].keys()
 	else:
