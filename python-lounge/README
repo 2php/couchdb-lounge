@@ -1,4 +1,6 @@
 Altered behavior of set_path so that exceptions will be triggered instead of replacing scalar data with a new collection, even if that scalar is None
+#2.0.1 12/02/2010
+Allow Resource classes to specify their own db_connectinfo to override the global client.db_connectinfo
 #1.3.20 07/28/2010
 Added the 'keys' method to complete the dictionary interface
 #1.3.19 07/28/2010
