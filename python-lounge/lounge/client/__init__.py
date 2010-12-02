@@ -132,6 +132,11 @@ class ValidationFailed(Exception):
 	"""Exception for when an object fails validation."""
 	pass
 
+def get_db_connectinfo(resource):
+	# if it's set on the resource, use it; otherwise, fall
+	# back on the global db_connectinfo
+	return resource.db_connectinfo or db_connectinfo
+
 class Resource(object, DictMixin):
 	"""A generic REST resource.
 	
@@ -148,6 +153,7 @@ class Resource(object, DictMixin):
 	# and you will guarantee that it will be set to 
 	# some kind of list.  Saves a lot of edge-case handling!
 	defaults = {}
+	db_connectinfo = None
 
 	def __init__(self):
 		"""Private!  Use find or new."""
@@ -397,7 +403,7 @@ class Database(Resource):
 
 	def url(self):
 		# key is database new; url is couch url/database
-		return db_connectinfo + self._key
+		return get_db_connectinfo(self) + self._key
 
 class Document(Resource):
 	"""Base class for a lounge record.
@@ -431,7 +437,7 @@ class Document(Resource):
 
 	@classmethod
 	def generate_uuid(cls):
-		url = db_connectinfo + "_uuids?count=1";
+		url = get_db_connectinfo(cls) + "_uuids?count=1";
 		uuids = Resource.find(url).uuids
 		return uuids[0]
 
@@ -446,7 +452,7 @@ class Document(Resource):
 		# issue will come when you try to save it
 		if self.db_name is None:
 			raise NotImplementedError("Database not provided")
-		return db_connectinfo + self._db_name + '/' + urllib.quote(self._key.encode('utf8', 'xmlcharrefreplace'), safe=':/,~@!')
+		return get_db_connectinfo(self) + self._db_name + '/' + urllib.quote(self._key.encode('utf8', 'xmlcharrefreplace'), safe=':/,~@!')
 	
 	def set_error(self, attr, msg):
 		"""Add an error message to the object's errors dict.
@@ -531,7 +537,7 @@ class Changes(Resource):
 		return inst
 	
 	def url(self):
-		return db_connectinfo + self._db_name + '/' + self._key
+		return get_db_connectinfo(self) + self._db_name + '/' + self._key
 
 	
 
@@ -551,7 +557,7 @@ class DesignDoc(Document):
 	# we override the url method here because we have different quoting behavior from a regular document
 	# if they do ever fix this in couchdb, we can revert this :)
 	def url(self):
-		return db_connectinfo + self._db_name + '/' + self._key
+		return get_db_connectinfo(self) + self._db_name + '/' + self._key
 
 class TuplyDict(object):
 
@@ -595,7 +601,7 @@ class View(Resource):
 		self._db_name = db_prefix + db_name
 
 	def url(self):
-		return db_connectinfo + self._db_name + '/' + self._key
+		return get_db_connectinfo(self) + self._db_name + '/' + self._key
 
 	@classmethod
 	def make_key(cls, name):

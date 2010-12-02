@@ -666,6 +666,24 @@ class LoungeTestCase(TestCase):
 		a['two'] = 5
 		assert(a.get('two',10) == 5)
 
+	def testDbConnectInfo(self):
+		class Default(Document):
+			db_name = "pytest"
+		class Specified(Document):
+			db_name = "pytest"
+			db_connectinfo = "http://brocalhost:187/"
+
+		self.assertEqual(get_db_connectinfo(Default.new("blargh")), client.db_connectinfo)
+
+		self.assertEqual(get_db_connectinfo(Specified.new("mlargh")), "http://brocalhost:187/")
+
+		Default.create("whatever")
+		self.assertRaises(client.LoungeError, Specified.create, "hellothere")
+
+		Default.db_connectinfo = "http://yoyobeanbag/"
+		self.assertEqual(get_db_connectinfo(Default.new("blargh")), "http://yoyobeanbag/")
+		self.assertRaises(client.LoungeError, Default.create, "hellothere")
+
 	def testPathMethods(self):
 		class CoolDoc(Document): pass
 		a = CoolDoc.new()
