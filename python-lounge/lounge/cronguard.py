@@ -52,7 +52,7 @@ class CronGuard:
 	The default usage should work for the majority of scripts.
 	"""
 
-	def __init__(self, pidfile_dir = "/var/lounge/run/pid", pidfile_name = None):
+	def __init__(self, pidfile_dir = "/var/run/lounge", pidfile_name = None):
 		(exe_path, self.exe_name) = os.path.split(sys.argv[0])
 
 		if not pidfile_name:
