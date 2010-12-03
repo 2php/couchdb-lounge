@@ -31,7 +31,7 @@ else:
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
 LOG_LEVEL = logging.ERROR
-LOG_LOCATION = '/var/meebo/log/view_updater.log'
+LOG_LOCATION = '/var/log/lounge/view_updater.log'
 
 DESIGN_DOCS_TO_SKIP = {
 		'analyze':1,
