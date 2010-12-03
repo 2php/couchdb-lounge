@@ -53,7 +53,7 @@ if os.system("/etc/init.d/smartproxyd status >& /dev/null") != 0:
 	sys.exit(1)
 
 # check whether twistd is going bananas with memory consumption:
-pid = commands.getoutput("cat /var/run/smartproxyd.pid")
+pid = commands.getoutput("cat /var/run/lounge/smartproxyd.pid")
 memusage = int(commands.getoutput("grep VmRSS /proc/%s/status | awk '{ print $2 }'" % pid))
 # if memusage is > 1 gig restart and include ops in the email alert:
 if memusage > 1000000:
