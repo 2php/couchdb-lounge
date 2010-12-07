@@ -4,8 +4,8 @@
 #
 # processname: dumbproxy
 # 
-# chkconfig: 3 90 14
-# Source function library.
+# chkconfig: 2345 90 14
+# A modified version of NGINX that handles sharding and failover of a couch cluster.
 
 pidfile=/var/run/lounge/nginx.pid
 
@@ -13,10 +13,12 @@ if [ -f /etc/rc.d/init.d/functions ]; then
 	. /etc/rc.d/init.d/functions
 	START="daemon"
 	STOP="killproc -d 10"
+	STATUS="status -p $pidfile"
 else
 	. /lib/lsb/init-functions
 	START="start-stop-daemon --start --exec"
 	STOP="start-stop-daemon --stop --exec"
+	STATUS="status_of_proc -p $pidfile"
 fi
 
 start() {
@@ -37,21 +39,24 @@ stop() {
 
 # See how we were called.
 case "$1" in
-    start)
+	start)
 	start
 	;;
-    stop)
+	stop)
 	stop
 	;;
-    restart)
+	restart)
 	stop
 	start
 	;;
-    condrestart)
+	status)
+	$STATUS nginx-lounge
 	;;
-    reload)
-        ;;
-    *)
+	condrestart)
+	;;
+	reload)
+	;;
+	*)
 	echo $"Usage: $0 {start|stop|restart|condrestart|reload}"
 	;;
 esac
