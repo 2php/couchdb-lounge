@@ -10,6 +10,7 @@ rm -rf $DIR
 
 mkdir $DIR
 cp replication_notifier.py $DIR
+cp replicator.logrotate $DIR
 tar czf rn.tar.gz $DIR
 
 rm -f $RPMBUILDDIR/SOURCES/$DIR || true
