@@ -3,7 +3,7 @@
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
 Version:        0.10.2
-Release:        8%{?dist}.lounge5
+Release:        8%{?dist}.lounge9
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -17,13 +17,14 @@ Patch3:         couchdb-0003-Remove-bundled-erlang-oauth-library.patch
 Patch4:         couchdb-0004-Remove-bundled-erlang-etap-library.patch
 Patch5:         %{name}-%{version}-designreplication.patch
 Patch6:         %{name}-%{version}-597fix.patch
-Patch7:         %{name}-%{version}-mochiweb-max.patch
+Patch7:         %{name}-%{version}-mochiweb-settings.patch
 Patch8:         %{name}-%{version}-replication-fixes.patch
 Patch9:         %{name}-%{version}-attbackoff.patch
 Patch10:        %{name}-%{version}-replicator-settings.patch
 Patch11:        %{name}-%{version}-sync-logging.patch
 Patch12:        %{name}-%{version}-versioned-replication-ids.patch
 Patch13:        %{name}-%{version}-ensure-full-commit.patch
+Patch14:	%{name}-%{version}-respect-replicator-settings.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -62,13 +63,14 @@ JavaScript acting as the default view definition language.
 %patch4 -p1 -b .remove_bundled_etap
 %patch5 -p1 -b .designreplication
 %patch6 -p1 -b .597fix
-%patch7 -p1 -b .mochiweb-max
+%patch7 -p1 -b .mochiweb-settings
 %patch8 -p1 -b .replication-fixes
 %patch9 -p1 -b .attbackoff
 %patch10 -p1 -b .replicator-settings
 %patch11 -p1 -b .sync-logging
 %patch12 -p1 -b .versioned-replication-ids
 %patch13 -p1 -b .ensure-full-commit
+%patch14 -p1 -b .respect-replicator-settings
 rm -rf src/erlang-oauth
 rm -rf src/etap
 # Restore original timestamps to avoid reconfiguring
@@ -166,6 +168,9 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
+* Wed Dec  8 2010 Randall Leeds <randall@meebo-inc.com> 0.10.2-8-9
+- add mochiweb backlog and complete replicator settings fixes
+
 * Tue Oct 19 2010 Randall Leeds <randall@meebo-inc.com> 0.10.2-8-5
 - add content-length: 0 to _ensure_full_commit (avoid nginx 411)
 
