@@ -58,6 +58,7 @@ install -d $RPM_BUILD_ROOT/var/log/lounge/nginx
 install -m644 conf/nginx.conf  $RPM_BUILD_ROOT/etc/lounge/nginx/nginx.conf
 install -m644 conf/shards.conf $RPM_BUILD_ROOT/etc/lounge/shards.conf
 install -m755 init.d/dumbproxy $RPM_BUILD_ROOT/etc/init.d/dumbproxy
+install -m644 dumbproxy.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/dumbproxy
 
 %clean 
 rm -Rf $RPM_BUILD_ROOT
@@ -72,3 +73,4 @@ rm -Rf $RPM_BUILD_ROOT
 %dir /var/run/lounge
 /usr/bin/nginx-lounge
 /etc/init.d/dumbproxy
+/etc/logrotate.d/dumbproxy
