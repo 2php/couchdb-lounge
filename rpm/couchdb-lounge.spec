@@ -22,6 +22,8 @@ cp -p %{_sourcedir}/lounge.ini .
 
 %install
 mkdir -p %{buildroot}/etc/couchdb/default.d
+mkdir -p %{buildroot}/var/run/lounge
+mkdir -p %{buildroot}/var/log/lounge
 cp %{_builddir}/lounge.ini %{buildroot}/etc/couchdb/default.d/lounge.ini
 
 %post
@@ -31,7 +33,6 @@ cp %{_builddir}/lounge.ini %{buildroot}/etc/couchdb/default.d/lounge.ini
 /etc/init.d/dumbproxy restart
 
 %files
-%dir /var/lounge
 %dir /var/run/lounge
 %dir /var/log/lounge
 /etc/couchdb/default.d/lounge.ini
