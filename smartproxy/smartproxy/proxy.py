@@ -209,7 +209,7 @@ class SmartproxyResource(resource.Resource):
 
 		uri = request.uri[1:]
 		db, req = uri.split('/', 1)
-		shards = self.conf_data.shards(db)
+		shards = self.conf_data.unique_shards(db)
 		reducer = Reducer(reduce_fn, len(shards), {}, deferred, self.reduce_queue)
 
 		failed = False
@@ -260,7 +260,7 @@ class SmartproxyResource(resource.Resource):
 		if qs: qs = '?' + qs
 
 		# get the urls for the shard primary replicas
-		primary_urls = [self._rewrite_url("/".join([host, design_doc])) for host in self.conf_data.primary_shards(database)]
+		primary_urls = [self._rewrite_url("/".join([host, design_doc])) for host in self.conf_data.primary_shards(database, unique=True)]
 		view_uri = request.path.split("/",2)[2] + qs
 
 		#if we're already processing a request for this uri, just append this
@@ -372,7 +372,7 @@ class SmartproxyResource(resource.Resource):
 		database = request.path[1:].split('/', 1)[0]
 		shards = dict(map(lambda s:
 						  (self.conf_data.get_index_from_shard(s), s),
-						  self.conf_data.shards(database)))
+						  self.conf_data.unique_shards(database)))
 
 		feed = request.args.get('feed',['nofeed'])[-1]
 		continuous = (feed == 'continuous')
@@ -738,7 +738,7 @@ class SmartproxyResource(resource.Resource):
 			return cjson.encode({"error": "smartproxy got a " + request.method + " to " + request.uri + ". don't know how to handle it"})+"\n"
 
 		# farm it out.  generate a list of resources to PUT
-		shards = self.conf_data.shards(db_name)
+		shards = self.conf_data.unique_shards(db_name)
 		nodes = set() # ensures once-per-node when replicas cohabitate
 		for shard in shards:
 			if rest:
@@ -827,7 +827,7 @@ class SmartproxyResource(resource.Resource):
 					 [],                  # factory args
 					 {}),                 # factor kwargs
 					*zip(*enumerate(self.conf_data.nodes(shard))))),
-				self.conf_data.shards(db_name)),
+				self.conf_data.unique_shards(db_name)),
 			fireOnOneErrback=1,
 			consumeErrors=1).addCallbacks(finish_request, handle_error)
 
