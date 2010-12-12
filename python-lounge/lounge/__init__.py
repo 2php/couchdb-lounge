@@ -56,16 +56,13 @@ class ShardMap(object):
 			# unicode will mess up stuff like curl, so we convert to plain str
 			return [str("http://%s:%d/%s" % (host,port,shard)) for host, port in [self.nodelist[i] for i in self.shardmap[shard_index]]]
 	
-	def primary_shards(self, dbname):
+	def primary_shards(self, dbname, unique=False):
 		"""Return the complete URL of each primary shard for a given database.
 
 		Ex: in -- userinfo
 		   out -- [http://server1:5984/userinfo1, http://server2:5984/userinfo2, http://server1:5984/userinfo3 ..]
 		"""
-		rv = []
-		for shard_index,shard_nodes in enumerate(self.shardmap):
-			host,port = self.nodelist[shard_nodes[0]]
-			rv.append(str("http://%s:%d/%s%d" % (host,port,dbname,shard_index)))
-		return rv
-			
+		shards = unique and self.unique_shards(dbname) or self.shards(dbname)
+		return [self.nodes(s)[0] for s in shards]
+
 # vi: noexpandtab ts=2 sw=2
