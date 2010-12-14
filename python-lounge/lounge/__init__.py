@@ -29,7 +29,7 @@ class ShardMap(object):
 		return int(self.get_db_shard.sub(r'\2', shard))
 	
 	def shards(self, dbname):
-		return ["%s%d" % (dbname, i) for i in len(self.shardmap)]
+		return ["%s%d" % (dbname, i) for i in range(len(self.shardmap))]
 
 	def unique_shards(self, dbname):
 		unique_shards = list(reduce(
