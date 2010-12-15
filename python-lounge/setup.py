@@ -7,10 +7,10 @@ py_packages = ['lounge', 'lounge.client']
 description = 'lounge python module'
 long_description = 'nice interface to lounge configuration'
 
-setup( version = '1.3.24',
+setup( version = '1.4.0',
 	   description = description,
 	   long_description = long_description,
-	   name = 'python-lounge',
+	   name = 'python-lounge1',
 	   author='meebo',
 	   author_email='shaun@meebo.com',
 	   url='http://tilgovi.github.com/couchdb-lounge/',

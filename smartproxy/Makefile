@@ -1,5 +1,5 @@
 # build number, increment with each new build, reset on new version
-RELEASE = 1`rpm --eval %{?dist}`
+RELEASE = 4`rpm --eval %{?dist}`
 
 
 PY_VERSION := $(shell python -V 2>&1)
@@ -22,7 +22,7 @@ install:
 
 rpm:
 	echo $(PY_VERSION)
-	python setup.py bdist_rpm --release="$(RELEASE)" --requires "Twisted >= 8.2, python-pyicu, python-cjson, zope.interface, python-lounge >= 1.3.24" $(PY_EXTRA)
+	python setup.py bdist_rpm --release="$(RELEASE)" --requires "Twisted >= 8.2, python-pyicu, python-cjson, zope.interface, python-lounge1 >= 1.4.0" --obsoletes "lounge-smartproxy < 1.4.0" --conflicts "lounge-smartproxy2" --provides "lounge-smartproxy = %{version}" $(PY_EXTRA)
 
 clean:
 	rm -f MANIFEST
