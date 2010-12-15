@@ -1,5 +1,5 @@
 # build number, increment with each new build, reset on new version
-RELEASE = 3`rpm --eval "%{dist}"`
+RELEASE = 2`rpm --eval "%{dist}"`
 
 
 PY_VERSION := $(shell python -V 2>&1)
@@ -24,7 +24,7 @@ install:
 
 rpm:
 	python setup.py bdist_rpm --release="$(RELEASE)" --requires "httplib2" \
-		--conflicts "lounge-smartproxy < 2.0" $(PY_EXTRA)
+		--conflicts "python-lounge1" --obsoletes "python-lounge < 2.1" --provides "python-lounge = %{version}" $(PY_EXTRA)
 
 .PHONY: test
 test:

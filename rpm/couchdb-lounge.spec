@@ -1,14 +1,17 @@
-Name:		couchdb-lounge-transitional
-Version: 	2.0
-Release:	5%{?dist}
+Name:		couchdb-lounge2
+Version: 	2.1
+Release:	3%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
 License: 	Apache
 
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-Requires:  lounge-dumbproxy-transitional >= 2.0, lounge-smartproxy-transitional >= 2.0, couchdb >= 0.10.0, lounge-replicator >= 1.2.0
-Conflicts: couchdb-lounge < 2.0
+Requires:  lounge-dumbproxy >= 2.1, lounge-smartproxy >= 2.1, couchdb >= 0.10.2, lounge-replicator >= 1.2.0
+Conflicts: couchdb-lounge1
+Obsoletes: couchdb-lounge < 2.1
+Obsoletes: couchdb-lounge-transitional
+Provides: couchdb-lounge = %{version}
 
 %description
 Metapackage wrapping the dependencies for the various lounge components
