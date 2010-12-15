@@ -52,6 +52,7 @@ echo `pwd`
 
 install -d $RPM_BUILD_ROOT/etc/lounge/nginx
 install -d $RPM_BUILD_ROOT/etc/init.d
+install -d $RPM_BUILD_ROOT/etc/logrotate.d
 install -d $RPM_BUILD_ROOT/var/run/lounge
 install -d $RPM_BUILD_ROOT/var/log/lounge
 install -d $RPM_BUILD_ROOT/var/log/lounge/nginx
