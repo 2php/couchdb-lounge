@@ -318,7 +318,7 @@ class ViewFetcher(HttpFetcher):
 		reduce_func = design_doc.get("views",{}).get(self._view, {}).get("reduce", None)
 		if reduce_func is not None:
 			reduce_func = reduce_func.replace("\n","")
-		shards = self._config.shards(self._database)
+		shards = self._config.unique_shards(self._database)
 		reducer = Reducer(reduce_func, len(shards), self._args, self._deferred, self._reduce_queue)
 
 		# make sure we don't call this deferred twice (using self._failed)

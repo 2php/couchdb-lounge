@@ -260,7 +260,7 @@ class SmartproxyResource(resource.Resource):
 		if qs: qs = '?' + qs
 
 		# get the urls for the shard primary replicas
-		primary_urls = [self._rewrite_url("/".join([host, design_doc])) for host in self.conf_data.primary_shards(database, unique=True)]
+		primary_urls = [self._rewrite_url("/".join([host, design_doc])) for host in self.conf_data.primary_shards(database)]
 		view_uri = request.path.split("/",2)[2] + qs
 
 		#if we're already processing a request for this uri, just append this
