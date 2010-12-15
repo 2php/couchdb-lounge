@@ -18,6 +18,8 @@ Finds and retrieves all views on a local couchdb instance
 install -D -m755 view_updater.py $RPM_BUILD_ROOT/var/lounge/bin/view_updater.py
 install -D -m644 view_updater.logrotate $RPM_BUILD_ROOT/etc/logrotate.d/view_updater
 install -D -m644 view_updater.cron $RPM_BUILD_ROOT/etc/cron.d/view_updater
+mkdir /var/log/lounge
+mkdir /var/run/lounge
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -28,6 +30,8 @@ rm -rf $RPM_BUILD_ROOT
 /var/lounge/bin/view_updater.py
 /etc/logrotate.d/view_updater
 /etc/cron.d/view_updater
+%dir /var/run/lounge
+%dir /var/log/lounge
 %doc
 
 
