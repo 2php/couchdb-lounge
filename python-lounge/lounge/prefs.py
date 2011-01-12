@@ -133,9 +133,6 @@ class Prefs:
 		if self.reload:
 			self.check_reload()
 
-		if pref_name.endswith("*") and default is not None:
-			raise TypeError("default shouldn't be set when trying to return a list")
-
 		keys = pref_name.split("/")
 		keys[0] = "/"
 		for curr_tree in self.pref_trees:
@@ -150,7 +147,9 @@ class Prefs:
 			if key == "*":
 				return self.get_all_vals(curr_tree)
 			return self.get_val(curr_tree)
-		if self.no_missing_keys:
+		if default is not None:
+			return default
+		elif self.no_missing_keys:
 			raise KeyError("get_pref couldn't find the requested preference: '%s'" % pref_name)
 		else:
 			logging.warning(""" get_pref couldn't find the requested preference: '%s' -- you're not using no_missing_keys, so this isn't an error, but you should probably make sure that the preference you're looking for is correct and switch over to using no_missing_keys.  Eventually, no_missing_keys will be the default behavior and then where will you be?  You'll be at Sad Towne, my friend.  Nobody wants to go to Sad Towne.  """ % pref_name)
