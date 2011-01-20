@@ -52,7 +52,10 @@ def get_all_design_docs(db):
 	url = url + urlencode( [ ("startkey", '"_design/"'), ("endkey", '"_designZZZZZZ"')])
 	try:
 		x = urlopen(url).read()
-	except IOError, AttributeError:
+	except IOError:
+		logging.exception("Failed trying to fetch %s" % url)
+		return []
+	except AttributeError:
 		logging.exception("Failed trying to fetch %s" % url)
 		return []
 	design_doc_json = cjson.decode(x)
