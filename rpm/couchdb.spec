@@ -10,28 +10,37 @@ Group:          Applications/Databases
 License:        ASL 2.0
 URL:            http://couchdb.apache.org/
 Source0:        http://www.apache.org/dist/%{name}/%{version}/apache-%{name}-%{version}.tar.gz
-Source1:        %{name}.init
 Patch1:         couchdb-0001-Force-init-script-installation.patch
 Patch2:         couchdb-0002-Install-into-erllibdir-by-default.patch
 Patch3:         couchdb-0003-Remove-bundled-erlang-oauth-library.patch
 Patch4:         couchdb-0004-Remove-bundled-erlang-etap-library.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
+BuildRequires:  autoconf
+BuildRequires:  automake >= 1.6.3
 BuildRequires:  erlang
-BuildRequires:  libicu-devel
-BuildRequires:  js-devel
+BuildRequires:  gcc
+BuildRequires:  js-devel >= 1.7
+BuildRequires:  libicu-devel >= 3.0
+BuildRequires:  libtool
+BuildRequires:  make
+BuildRequires:  openssl-devel
+BuildRequires:  pkgconfig
+BuildRequires:  which
 BuildRequires:  help2man
 BuildRequires:  curl-devel
-#BuildRequires:  erlang-etap
+BuildRequires(check):  erlang-etap
 
 Requires:       erlang
 Requires:       erlang-oauth
 # For %{_bindir}/icu-config
 Requires:       libicu-devel
+Requires:       logrotate
 
 #Initscripts
 Requires(post): chkconfig
 Requires(preun): chkconfig initscripts
+Requires: lsb
 
 # Users and groups
 Requires(pre): shadow-utils
@@ -70,23 +79,10 @@ make %{?_smp_mflags}
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 
-## Install couchdb initscript
-install -D -m 755 %{SOURCE1} $RPM_BUILD_ROOT%{_initrddir}/%{name}
-
-# Create /var/log/couchdb
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/couchdb
-
-# Create /var/run/couchdb
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/run/couchdb
-
-# Create /var/lib/couchdb
-mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/couchdb
-
-# Create /etc/couchdb/default.d
-mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/couchdb/default.d
-
-# Create /etc/couchdb/local.d
-mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/couchdb/local.d
+## Use /etc/init.d instead of /etc/rc.d
+mkdir -p $RPM_BUILD_ROOT%{_initrddir}
+mv $RPM_BUILD_ROOT%{_sysconfdir}/rc.d/couchdb \
+$RPM_BUILD_ROOT%{_initrddir}/couchdb
 
 ## Use /etc/sysconfig instead of /etc/default
 mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig
@@ -95,14 +91,15 @@ $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/couchdb
 rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/default
 
 # Remove unecessary files
-rm $RPM_BUILD_ROOT%{_sysconfdir}/rc.d/couchdb
 rm -rf  $RPM_BUILD_ROOT%{_datadir}/doc/couchdb
 
 # clean-up .la archives
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
-# fix respawn timeout to match default value
-sed -i s,^COUCHDB_RESPAWN_TIMEOUT=5,COUCHDB_RESPAWN_TIMEOUT=0,g $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/couchdb
+
+%check
+make check
+
 
 %clean
 rm -rf $RPM_BUILD_ROOT
