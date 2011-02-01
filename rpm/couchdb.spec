@@ -10,10 +10,6 @@ Group:          Applications/Databases
 License:        ASL 2.0
 URL:            http://couchdb.apache.org/
 Source0:        http://www.apache.org/dist/%{name}/%{version}/apache-%{name}-%{version}.tar.gz
-Patch1:         couchdb-0001-Force-init-script-installation.patch
-Patch2:         couchdb-0002-Install-into-erllibdir-by-default.patch
-Patch3:         couchdb-0003-Remove-bundled-erlang-oauth-library.patch
-Patch4:         couchdb-0004-Remove-bundled-erlang-etap-library.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  autoconf
@@ -59,15 +55,6 @@ requests issued from your browser.
 
 %prep
 %setup -q -n apache-%{name}-%{version}
-%patch1 -p1 -b .initenabled
-%patch2 -p1 -b .fix_lib_path
-%patch3 -p1 -b .remove_bundled_oauth
-%patch4 -p1 -b .remove_bundled_etap
-rm -rf src/erlang-oauth
-rm -rf src/etap
-# Restore original timestamps to avoid reconfiguring
-touch -r configure.ac.initenabled configure.ac
-touch -r configure.fix_lib_path configure
 
 
 %build
