@@ -2,8 +2,8 @@
 %define couchdb_group couchdb
 %define couchdb_home %{_localstatedir}/lib/couchdb
 Name:           couchdb
-Version:        0.10.2
-Release:        8%{?dist}.lounge9
+Version:        1.0.2
+Release:        1%{?dist}
 Summary:        A document database server, accessible via a RESTful JSON API
 
 Group:          Applications/Databases
@@ -15,16 +15,6 @@ Patch1:         couchdb-0001-Force-init-script-installation.patch
 Patch2:         couchdb-0002-Install-into-erllibdir-by-default.patch
 Patch3:         couchdb-0003-Remove-bundled-erlang-oauth-library.patch
 Patch4:         couchdb-0004-Remove-bundled-erlang-etap-library.patch
-Patch5:         %{name}-%{version}-designreplication.patch
-Patch6:         %{name}-%{version}-597fix.patch
-Patch7:         %{name}-%{version}-mochiweb-settings.patch
-Patch8:         %{name}-%{version}-replication-fixes.patch
-Patch9:         %{name}-%{version}-attbackoff.patch
-Patch10:        %{name}-%{version}-replicator-settings.patch
-Patch11:        %{name}-%{version}-sync-logging.patch
-Patch12:        %{name}-%{version}-versioned-replication-ids.patch
-Patch13:        %{name}-%{version}-ensure-full-commit.patch
-Patch14:	%{name}-%{version}-respect-replicator-settings.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  erlang
@@ -48,12 +38,15 @@ Requires(pre): shadow-utils
 
 
 %description
-Apache CouchDB is a distributed, fault-tolerant and schema-free
-document-oriented database accessible via a RESTful HTTP/JSON API.
-Among other features, it provides robust, incremental replication
-with bi-directional conflict detection and resolution, and is
-queryable and indexable using a table-oriented view engine with
-JavaScript acting as the default view definition language.
+Apache CouchDB is a document-oriented database that can be queried and indexed
+in a MapReduce fashion using JavaScript. CouchDB also offers incremental
+replication with bi-directional conflict detection and resolution.
+
+CouchDB provides a RESTful JSON API than can be accessed from any environment
+that allows HTTP requests. There are myriad third-party client libraries that
+make this even easier from your programming language of choice. CouchDB’s built
+in Web administration console speaks directly to the database using HTTP
+requests issued from your browser.
 
 %prep
 %setup -q -n apache-%{name}-%{version}
@@ -61,16 +54,6 @@ JavaScript acting as the default view definition language.
 %patch2 -p1 -b .fix_lib_path
 %patch3 -p1 -b .remove_bundled_oauth
 %patch4 -p1 -b .remove_bundled_etap
-%patch5 -p1 -b .designreplication
-%patch6 -p1 -b .597fix
-%patch7 -p1 -b .mochiweb-settings
-%patch8 -p1 -b .replication-fixes
-%patch9 -p1 -b .attbackoff
-%patch10 -p1 -b .replicator-settings
-%patch11 -p1 -b .sync-logging
-%patch12 -p1 -b .versioned-replication-ids
-%patch13 -p1 -b .ensure-full-commit
-%patch14 -p1 -b .respect-replicator-settings
 rm -rf src/erlang-oauth
 rm -rf src/etap
 # Restore original timestamps to avoid reconfiguring
@@ -168,33 +151,8 @@ fi
 %dir %attr(0755, %{couchdb_user}, root) %{_localstatedir}/lib/couchdb
 
 %changelog
-* Wed Dec  8 2010 Randall Leeds <randall@meebo-inc.com> 0.10.2-8-9
-- add mochiweb backlog and complete replicator settings fixes
-
-* Tue Oct 19 2010 Randall Leeds <randall@meebo-inc.com> 0.10.2-8-5
-- add content-length: 0 to _ensure_full_commit (avoid nginx 411)
-
-* Thu Jun 24 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-4
-- backport versioned replication id patch, fixes co-hosted couches
-
-* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-3
-- `basename $0` to get $prog in init (symlink to run multiple couches)
-
-* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-2
-- login shell clears environment, instead explicitly cd during init
-
-* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-8-1
-- Mostly sync up with upstream EPEL changes
-
-* Mon Jun 21 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-2
-- init script uses login shell, fixes permissions for config loading
-
-* Thu Jun 17 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-4-1
-- Append COUCHDB-793 patch to replication-fixes, fixes hanging reps
-- cleanup and fixes to init script
-
-* Tue Jun  8 2010 Randall Leeds <randall.leeds@gmail.com> 0.10.2-3-1
-- Revert to using daemon. Sync up with upstream rpm.
+* Tue Feb  1 2011 Randall Leeds <randall@meebo-inc.com> 1.0.2-1
+- Update to vanilla upstream 1.0.2
 
 * Tue Jun  1 2010 Peter Lemenkov <lemenkov@gmail.com> 0.10.2-8
 - Suppress unneeded message while stopping CouchDB via init-script
