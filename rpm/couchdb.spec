@@ -16,7 +16,7 @@ BuildRequires:  autoconf
 BuildRequires:  automake >= 1.6.3
 BuildRequires:  erlang
 BuildRequires:  gcc
-BuildRequires:  js-devel >= 1.7
+BuildRequires:  xulrunner-devel >= 1.8
 BuildRequires:  libicu-devel >= 3.0
 BuildRequires:  libtool
 BuildRequires:  make
@@ -29,6 +29,7 @@ BuildRequires(check):  erlang-etap
 
 Requires:       erlang
 Requires:       erlang-oauth
+Requires:       xulrunner >= 1.8
 Requires:       libicu
 Requires:       logrotate
 
