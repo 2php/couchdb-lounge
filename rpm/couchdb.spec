@@ -29,8 +29,7 @@ BuildRequires(check):  erlang-etap
 
 Requires:       erlang
 Requires:       erlang-oauth
-# For %{_bindir}/icu-config
-Requires:       libicu-devel
+Requires:       libicu
 Requires:       logrotate
 
 #Initscripts
