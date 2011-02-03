@@ -121,7 +121,7 @@ fi
 %dir %{_sysconfdir}/couchdb
 %dir %{_sysconfdir}/couchdb/local.d
 %dir %{_sysconfdir}/couchdb/default.d
-%config(noreplace) %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/default.ini
+%config %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/default.ini
 %config(noreplace) %attr(0644, %{couchdb_user}, root) %{_sysconfdir}/couchdb/local.ini
 %config(noreplace) %{_sysconfdir}/sysconfig/couchdb
 %config(noreplace) %{_sysconfdir}/logrotate.d/couchdb
