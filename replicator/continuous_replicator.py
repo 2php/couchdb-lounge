@@ -32,15 +32,13 @@ from stat import *
 import StringIO
 import threading
 import time
+import urllib
 import urllib2
 
 import lounge
 
 # TODO some other time use couch.ini for the port
-me = 'http://' + socket.gethostname() + ':5984/'
-
-# when this many documents have been updated, perform the replication
-UPDATES_PER_REPLICATION = 10
+me = 'http://' + socket.getfqdn() + ':5984/'
 
 shard_map = None
 
@@ -66,46 +64,62 @@ class BgReplicator(threading.Thread):
 				last_update[(source, target, do)] = time.time()
 				try:
 					target_host, target_db = target.rsplit('/', 1)
+					target_db = urllib.unquote(target_db)
 					post_data = simplejson.dumps({"source": source, "target": target_db, "designonly": do})
-					urllib2.urlopen(target_host + "/_replicate", post_data)
+					urllib2.urlopen(urllib2.Request(
+						target_host + "/_replicate", post_data,
+						{"Content-Type" : "application/json"}))
 				except:
 					# don't panic!  keep going to the next record in the queue.
 					pass
 
-def do_background_replication(source, target, **opts):
-	# enqueue the request and let the consumer worry about it
-	repq.put((source, target, opts, time.time()))
+def do_continuous_replication(source, target):
+	try:
+		target_host, target_db = target.rsplit('/', 1)
+		target_db = urllib.unquote(target_db)
+		post_data = simplejson.dumps({"source": source, "target": target_db, "continuous": True})
+		urllib2.urlopen(urllib2.Request(
+			target_host + "/_replicate", post_data,
+			{"Content-Type" : "application/json"}))
+	except:
+		# don't panic!  keep going to the next record in the queue.
+		pass
 
 def replicate(shard):
 	global update_count
 	update_count[shard] = update_count.get(shard, 0) + 1
 
 	# don't replicate until we've accumulated 10 updates
-	if update_count[shard] < UPDATES_PER_REPLICATION:
+	if (update_count[shard] < UPDATES_PER_REPLICATION):
 		return
 
 	update_count[shard] = 0
 
 	# first do full replication
-	source = shard
+	source = urllib.quote(shard, '')
 	local = me + source
+	nodes = shard_map.nodes(source)
+	if me not in nodes:
+		return
+
 	for target in shard_map.nodes(source):
 		# for full replication, we don't want to replicate to our self.	how silly
 		if i_dont_host(target):
-			do_background_replication(local, target)
+			do_continuous_replication(local, target)
 	
 	# then design replications: from shard 0 to the rest
-	shard_index = shard_map.get_index_from_shard(source)
-	if shard_index==0:
-		for target in shard_map.primary_shards(shard_map.get_db_from_shard(source)):
-			if target != local:
-				do_background_replication(local, target, designonly=True)
+	# disable for now.  use force_design_rep when needed
+	#shard_index = shard_map.get_index_from_shard(source)
+	#if shard_index==0:
+	#	for target in shard_map.primary_shards(shard_map.get_db_from_shard(source)):
+	#		if target != local:
+	#			do_background_replication(local, target, designonly=True)
 
 def load_config(fname):
 	global shard_map
 	old = shard_map
 
-	shard_map = lounge.ShardMap(fname=fname)
+	shard_map = lounge.ShardMap()
 	try:
 		pass
 	except:
@@ -132,26 +146,27 @@ def main():
 	logging.info("Starting up")
 
 	while True:
-			try:
-				# wait for a line from the database
-				stuff = sys.stdin.readline()
-				if not stuff:
-					return
-				# format: {"type": "updated", "db": "nameofdb"}
-				notification = simplejson.loads(stuff)
-
-				# check for updated config
-				read_conf_at = read_config_if_changed(read_conf_at)
-				
-				# extract the database name
-				if notification['type']=='updated':
-					db = notification['db'] 
-					replicate(db)
-			except:
-				logging.exception("error in main loop")
-				pid = os.getpid()
-				os.kill(pid, signal.SIGTERM)
-				sys.exit(0)
+		# wait for a line from the database
+		stuff = sys.stdin.readline()
+		if not stuff:
+			return
+		
+		try:
+			# format: {"type": "updated", "db": "nameofdb"}
+			notification = simplejson.loads(stuff) 
+		
+			# check for updated config
+			read_conf_at = read_config_if_changed(read_conf_at) 
+		
+			# extract the database name
+			if notification['type']=='updated':
+				db = notification['db'] 
+				replicate(db)
+		except KeyboardInterrupt:
+			sys.exit(1)
+		except:
+			logging.exception("exception :( --")
+			time.sleep(1)
 	
 if __name__=='__main__':
 	main()
