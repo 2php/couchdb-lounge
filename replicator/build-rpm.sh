@@ -1,6 +1,6 @@
 #!/bin/sh
 
-VERSION=1.2.0
+VERSION=`grep "Version" lounge-replicator.spec | awk '{print $2}'`
 RPMBUILDDIR=`rpm --eval "%{_topdir}"`
 SOURCE_TARBALL=rn.tar.gz
 DIR=lounge-replicator-$VERSION/
@@ -9,7 +9,7 @@ rm -f $SOURCE_TARBALL
 rm -rf $DIR
 
 mkdir $DIR
-cp replication_notifier.py $DIR
+cp continuous_replicator.py $DIR
 cp replicator.logrotate $DIR
 tar czf rn.tar.gz $DIR
 
