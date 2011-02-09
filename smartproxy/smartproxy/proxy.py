@@ -759,7 +759,9 @@ class SmartproxyResource(resource.Resource):
 				(shard_idx,
 				 '/'.join([shard_uri, rest]),
 				 [],
-				 { 'method': 'POST' })
+				 { 'method': 'POST',
+				   'headers': request.getAllHeaders()
+				   })
 				for shard_uri in self.conf_data.nodes(shard)])
 			 for shard_idx, shard in enumerate(shards)],
 			fireOnOneErrback=1,
