@@ -24,7 +24,7 @@ install:
 
 rpm:
 	python setup.py bdist_rpm --release="$(RELEASE)" --requires "httplib2" \
-		--conflicts "python-lounge1" --obsoletes "python-lounge < 2.1" --provides "python-lounge = %{version}" $(PY_EXTRA)
+		--obsoletes "python-lounge < 2.1" --provides "python-lounge = %{version}" $(PY_EXTRA)
 
 .PHONY: test
 test:
