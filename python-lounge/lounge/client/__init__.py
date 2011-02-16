@@ -615,9 +615,8 @@ class View(Resource):
 		inst._key = cls.make_key(*key)
 		args = None
 		if 'args' in kwargs:
-			args = kwargs['args']
-			del kwargs['args']
-			for k,v in args.items():
+			args = copy.deepcopy(kwargs.pop('args'))
+			for k,v in args.iteritems():
 				# stale=ok is not json-encoded, but stuff like
 				#	startkey=["one", "two"] is json-encoded.
 				if k!='stale':
