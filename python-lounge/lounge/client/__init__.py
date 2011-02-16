@@ -611,6 +611,7 @@ class View(Resource):
 	@classmethod
 	def execute(cls, db_name, *key, **kwargs):
 		inst = cls(db_name)
+		inst.db_connectinfo = kwargs.pop('db_connectinfo', None)
 		inst._key = cls.make_key(*key)
 		args = None
 		if 'args' in kwargs:
