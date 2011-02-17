@@ -8,7 +8,7 @@ License: 	Apache
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires:  lounge-dumbproxy >= 2.1, lounge-smartproxy >= 2.1, couchdb >= 0.10.2, lounge-replicator >= 1.2.0
-Conflicts: couchdb-lounge1
+Obsoletes: couchdb-lounge1
 Obsoletes: couchdb-lounge < 2.1
 Obsoletes: couchdb-lounge-transitional
 Provides: couchdb-lounge = %{version}
