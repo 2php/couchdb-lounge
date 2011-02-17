@@ -1,3 +1,12 @@
 [submodule "couchdb"]
 	path = couchdb
 	url = https://github.com/meebo/couchdb.git
+[submodule "dumbproxy"]
+	path = dumbproxy
+	url = https://github.com/meebo/dumbproxy.git
+[submodule "smartproxy"]
+	path = smartproxy
+	url = https://github.com/meebo/smartproxy.git
+[submodule "python-lounge"]
+	path = python-lounge
+	url = https://github.com/meebo/python-lounge.git
