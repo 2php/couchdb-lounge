@@ -1,6 +1,6 @@
 Name:		couchdb-lounge2
-Version: 	2.1
-Release:	3%{?dist}
+Version: 	2.1.1
+Release:	1%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
 License: 	Apache
