@@ -1,5 +1,5 @@
-Meebo Lounge
-Copyright 2009 Meebo
+CouchDB-Lounge
+Copyright 2011 Meebo
 
 This project includes software developed at Meebo.
 
@@ -15,3 +15,16 @@ replicator was written by Kevin Ferguson
 
 view_updater was written by Shaun Lindsay
 
+This product also includes the following third-party components:
+
+ * lrucache.py (http://evan.prodromou.name/Software/Python/LRUCache)
+
+   Copyright 2004, Evan Prodromou <evan@bad.dynu.ca>
+
+ * nginx (http://nginx.net/)
+
+   Copyright 2002-2008, Igor Sysoev
+
+ * json-c (http://oss.metaparadigm.com/json-c/)
+
+   Copyright 2004, 2005, Metaparadigm Pte Ltd
