@@ -1,4 +1,5 @@
 RPM_SOURCE_DIR=`rpm --eval %{_sourcedir}`
+RPM_BUILD_DIR=`rpm --eval %{_builddir}`
 RPM_LIB_DIR=`rpm --eval %{_libdir}`
 
 COUCHDB_VERSION=`grep "Version" couchdb.spec | awk '{print $$2}'`
@@ -20,5 +21,6 @@ dist_couchdb: submodule_couchdb
 couchdb: dist_couchdb	
 	mkdir -p ${RPM_SOURCE_DIR}
 	cp ../couchdb/${COUCHDB_DIST_NAME}.tar.gz ${RPM_SOURCE_DIR}/
+	rm -rf ${RPM_BUILD_DIR}/${COUCHDB_DIST_NAME}
 	rpmbuild -ba couchdb.spec --define "tag ${COUCHDB_RPM_TAG}"
 
