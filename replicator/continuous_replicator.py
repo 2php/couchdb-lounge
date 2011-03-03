@@ -86,15 +86,6 @@ def do_continuous_replication(source, target):
 		pass
 
 def replicate(shard):
-	global update_count
-	update_count[shard] = update_count.get(shard, 0) + 1
-
-	# don't replicate until we've accumulated 10 updates
-	if (update_count[shard] < UPDATES_PER_REPLICATION):
-		return
-
-	update_count[shard] = 0
-
 	# first do full replication
 	source = urllib.quote(shard, '')
 	local = me + source
