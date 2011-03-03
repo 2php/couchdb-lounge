@@ -42,36 +42,8 @@ me = 'http://' + socket.getfqdn() + ':5984/'
 
 shard_map = None
 
-repq = Queue.Queue()
-last_update = {}
-update_count = {}
-
 def i_dont_host(node):
 	return not node.startswith(me)
-
-class BgReplicator(threading.Thread):
-	def __init__(self):
-		threading.Thread.__init__(self)
-
-	def run(self):
-		while True:
-			source, target, opts, tm = repq.get()
-			do = opts.get("designonly", False)
-			last = last_update.get((source, target, do), None)
-			# if we have performed this replication since the record was enqueued,
-			# we can skip it.
-			if last is None or last < tm:
-				last_update[(source, target, do)] = time.time()
-				try:
-					target_host, target_db = target.rsplit('/', 1)
-					target_db = urllib.unquote(target_db)
-					post_data = simplejson.dumps({"source": source, "target": target_db, "designonly": do})
-					urllib2.urlopen(urllib2.Request(
-						target_host + "/_replicate", post_data,
-						{"Content-Type" : "application/json"}))
-				except:
-					# don't panic!  keep going to the next record in the queue.
-					pass
 
 def do_continuous_replication(source, target):
 	try:
@@ -98,13 +70,7 @@ def replicate(shard):
 		if i_dont_host(target):
 			do_continuous_replication(local, target)
 	
-	# then design replications: from shard 0 to the rest
-	# disable for now.  use force_design_rep when needed
-	#shard_index = shard_map.get_index_from_shard(source)
-	#if shard_index==0:
-	#	for target in shard_map.primary_shards(shard_map.get_db_from_shard(source)):
-	#		if target != local:
-	#			do_background_replication(local, target, designonly=True)
+	# TODO: design doc replication
 
 def load_config(fname):
 	global shard_map
@@ -132,7 +98,6 @@ def main():
 		logging.warn("Cannot write to " + LOG_PATH)
 		logging.warn("Log messages will be written to stderr instead")
 	read_conf_at = None
-	BgReplicator().start()
 
 	logging.info("Starting up")
 
