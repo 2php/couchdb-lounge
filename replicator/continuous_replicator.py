@@ -20,17 +20,11 @@ LOG_PATH = '/var/log/lounge/replicator/replication_notifier.log'
 
 import logging
 import os
-import pycurl
-import Queue
-import re
 import sys
-import signal
 import simplejson
 import socket
 socket.setdefaulttimeout(900)
 from stat import *
-import StringIO
-import threading
 import time
 import urllib
 import urllib2
