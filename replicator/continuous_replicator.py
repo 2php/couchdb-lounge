@@ -56,10 +56,10 @@ def replicate(shard):
 	source = urllib.quote(shard, '')
 	local = me + source
 	nodes = shard_map.nodes(source)
-	if me not in nodes:
+	if local not in nodes:
 		return
 
-	for target in shard_map.nodes(source):
+	for target in nodes:
 		# for full replication, we don't want to replicate to our self.	how silly
 		if i_dont_host(target):
 			do_continuous_replication(local, target)
