@@ -6,6 +6,6 @@
 	missingok
 	sharedscripts
 	postrotate
-		kill -HUP $( cat /var/run/lounge/nginx.pid ) || true
+		kill -USR1 $( cat /var/run/lounge/nginx.pid ) || true
 	endscript
 }
