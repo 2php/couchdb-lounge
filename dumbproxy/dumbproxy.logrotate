@@ -5,7 +5,7 @@
 	notifempty
 	missingok
 	sharedscripts
-	lastaction
+	postrotate
 		kill -HUP $( cat /var/run/lounge/nginx.pid ) || true
 	endscript
 }
