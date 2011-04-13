@@ -3,7 +3,7 @@
 # chkconfig: 3 90 14
 # Source function library.
 
-pidfile=/var/run/nginx-lounge.pid
+pidfile=/var/run/lounge/dumbproxy.pid
 
 if [ -f /etc/rc.d/init.d/functions ]; then
 	. /etc/rc.d/init.d/functions
