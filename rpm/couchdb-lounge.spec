@@ -1,6 +1,6 @@
 Name:		couchdb-lounge1
-Version: 	1.4.0
-Release:	3%{?dist}
+Version: 	1.4.1
+Release:	1%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
 License: 	Apache
@@ -10,7 +10,6 @@ BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires:  lounge-dumbproxy1 >= 1.4.0, lounge-smartproxy1 >= 1.4.0, couchdb >= 0.10.2, lounge-replicator >= 1.4.0
 Obsoletes: couchdb-lounge < 1.4.0
 Conflicts: couchdb-lounge2
-Provides: couchdb-lounge = %{version}
 
 %description
 Metapackage wrapping the dependencies for the various lounge components
