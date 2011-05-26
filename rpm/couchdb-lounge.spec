@@ -1,5 +1,5 @@
 Name:		couchdb-lounge2
-Version: 	2.1.1
+Version: 	2.1.3
 Release:	1%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
@@ -8,8 +8,7 @@ License: 	Apache
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 Requires:  lounge-dumbproxy >= 2.1, lounge-smartproxy >= 2.1, couchdb >= 0.10.2, lounge-replicator >= 1.2.0
-Obsoletes: couchdb-lounge1
-Obsoletes: couchdb-lounge < 2.1
+Conflicts: couchdb-lounge1
 Obsoletes: couchdb-lounge-transitional
 Provides: couchdb-lounge = %{version}
 
