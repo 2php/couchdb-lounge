@@ -1,5 +1,5 @@
 Name:		couchdb-lounge2
-Version: 	2.1.3
+Version: 	2.1.4
 Release:	1%{?dist}
 Summary:	Clustered CouchDB
 Group: 		Database/CouchDBCluster
