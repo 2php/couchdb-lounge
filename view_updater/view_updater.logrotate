@@ -1,4 +1,4 @@
-/var/lounge/log/view_updater.log {
+/var/log/lounge/view_updater.log {
 	daily
 	rotate 7
 	copytruncate

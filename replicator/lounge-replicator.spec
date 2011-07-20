@@ -1,7 +1,7 @@
 Summary: CouchDB replicator for the lounge
 Name: lounge-replicator
-Version: 1.2.0
-Release: 10%{?dist}
+Version: 1.4.3
+Release: 1%{?dist}
 URL: http://tilgovi.github.com/couchdb-lounge
 License: GPL
 Group: Applications/Databases
@@ -20,17 +20,21 @@ Replicator for CouchDb
 
 %install
 rm -rf %{buildroot}
+mkdir -p %{buildroot}/etc/logrotate.d
 mkdir -p %{buildroot}/var/lib/lounge
 mkdir -p %{buildroot}/var/log/lounge/replicator
-install replication_notifier.py %{buildroot}/var/lib/lounge/replication_notifier.py
+install continuous_replicator.py %{buildroot}/var/lib/lounge/continuous_replicator.py
+install replicator.logrotate %{buildroot}/etc/logrotate.d/replicator
 
 %clean
 rm -rf %{buildroot}
 
 %pre
 mkdir -p /var/lib/lounge
+mkdir -p /etc/logrotate.d
 
 %files
 %defattr(-,root,root,-)
-/var/lib/lounge/replication_notifier.py
+/var/lib/lounge/continuous_replicator.py
+/etc/logrotate.d/replicator
 %dir %attr(0755,couchdb,couchdb)/var/log/lounge/replicator

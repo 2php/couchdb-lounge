@@ -14,9 +14,13 @@
 #limitations under the License.
 
 from urllib import urlopen, urlencode
-import cjson
 import logging
+import os
+import simplejson
 import time
+import signal
+import urllib
+
 import lounge
 from lounge.cronguard import CronGuard
 
@@ -26,12 +30,18 @@ else:
 	COUCH_URL = "http://localhost:5984/"
 
 LOG_FORMAT = '%(asctime)s %(levelname)s %(message)s'
-LOG_LEVEL = logging.INFO
-LOG_LOCATION = '/var/meebo/log/view_updater.log'
+LOG_LEVEL = logging.ERROR
+LOG_LOCATION = '/var/log/lounge/view_updater.log'
 
 DESIGN_DOCS_TO_SKIP = {
 		'analyze':1,
 }
+
+def handle_USR2(signum, frame):
+	if logging.getLogger().getEffectiveLevel() > logging.INFO:
+		logging.getLogger().setLevel(logging.INFO)
+	else:
+		logging.getLogger().setLevel(logging.ERROR)
 
 def get_all_dbs():
 	try:
@@ -39,16 +49,12 @@ def get_all_dbs():
 	except:
 		logging.error("Failed to retrieve the database list from the local couch node")
 		raise
-	db_json = cjson.decode(x)
+	db_json = simplejson.loads(x)
 	return db_json
 
 
 def get_all_design_docs(db):
 	url = COUCH_URL + "%s/_all_docs?" % db
-	#note about couch 0.9.0 collation:
-	#collation on documents is case insensitive and unpredictable.  For instance,
-	#the following query requires '_designZZZZZZ' instead of '_design/ZZZZZZ'.
-	#Evidently the slash throws off the collation.  Very strange...
 	url = url + urlencode( [ ("startkey", '"_design/"'), ("endkey", '"_designZZZZZZ"')])
 	try:
 		x = urlopen(url).read()
@@ -58,7 +64,7 @@ def get_all_design_docs(db):
 	except AttributeError:
 		logging.exception("Failed trying to fetch %s" % url)
 		return []
-	design_doc_json = cjson.decode(x)
+	design_doc_json = simplejson.loads(x)
 	design_docs = []
 	if 'rows' not in design_doc_json:
 		logging.info ("No design docs in %s" % db)
@@ -82,7 +88,7 @@ def get_views(db, design_doc):
 	except IOError:
 		logging.exception("Failed trying to fetch %s" % url)
 		return []
-	design_doc_json = cjson.decode(x)
+	design_doc_json = simplejson.loads(x)
 	if "views" in design_doc_json:
 		return design_doc_json['views'].keys()
 	else:
@@ -91,12 +97,9 @@ def get_views(db, design_doc):
 
 
 def run_view(db, design_doc, view):
-	url = COUCH_URL + "%s/_design/%s/_view/%s" % (db, design_doc, view)
+	url = COUCH_URL + "%s/_design/%s/_view/%s?limit=1" % (db, design_doc, view)
 	try:
-		start_time = time.time()
 		x = urlopen(url).read()
-		end_time = time.time()
-		logging.info ("%-80s took %d seconds" % (url, end_time - start_time))
 	except:
 		logging.exception("run_view(%s,%s,%s)" % (db, design_doc, view))
 
@@ -107,6 +110,7 @@ if __name__ == "__main__":
 		logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 	else:
 		logging.basicConfig(level=LOG_LEVEL, filename=LOG_LOCATION, format=LOG_FORMAT)
+		signal.signal(signal.SIGUSR2, handle_USR2)
 	do_view_update = True
 
 	try:
@@ -117,6 +121,7 @@ if __name__ == "__main__":
 
 	if do_view_update:
 		for db in get_all_dbs():
+			db = urllib.quote_plus(db)
 			logging.info("starting database: %s" % db)
 			for design_doc in get_all_design_docs(db):
 				logging.info("starting design doc: %s" % design_doc)
@@ -127,4 +132,5 @@ if __name__ == "__main__":
 					end_time = time.time()
 					elapsed = end_time - start_time
 					logging.info("%s took %d seconds" % (view,elapsed))
+					break # you only need to do 1 view per doc
 		
