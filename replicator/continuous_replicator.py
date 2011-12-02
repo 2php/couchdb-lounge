@@ -39,32 +39,43 @@ shard_map = None
 def i_dont_host(node):
 	return not node.startswith(me)
 
-def do_continuous_replication(source, target):
+def do_replication(source, target, **kwargs):
 	try:
 		target_host, target_db = target.rsplit('/', 1)
 		target_db = urllib.unquote(target_db)
-		post_data = simplejson.dumps({"source": source, "target": target_db, "continuous": True})
+		post_data = simplejson.dumps(dict(source=source, target=target_db, **kwargs))
+
 		urllib2.urlopen(urllib2.Request(
 			target_host + "/_replicate", post_data,
 			{"Content-Type" : "application/json"}))
 	except:
 		# don't panic!  keep going to the next record in the queue.
-		pass
+		return False
+	else:
+		return True
 
 def replicate(shard):
 	# first do full replication
-	source = urllib.quote(shard, '')
-	local = me + source
-	nodes = shard_map.nodes(source)
+	shard = urllib.quote(shard, '')
+	source = me + shard
+	nodes = shard_map.nodes(shard)
 	if local not in nodes:
 		return
 
 	for target in nodes:
 		# for full replication, we don't want to replicate to our self.	how silly
 		if i_dont_host(target):
-			do_continuous_replication(local, target)
-	
-	# TODO: design doc replication
+			do_replication(source, target, continuous=True)
+
+	db = shard_map.get_db_from_shard(shard)
+	all_shards = shard_map.shards(db)
+	if shard == all_shards[0]:
+		# when the first shard is updated, replicate _design documents out
+		for other_shard in all_shards[1:]:
+			# only need to replicate it to one node per replica set
+			for target in shard_map.nodes(other_shard):
+				if do_replication(source, target, continuous=True, filter='_design'):
+					break
 
 def load_config(fname):
 	global shard_map
